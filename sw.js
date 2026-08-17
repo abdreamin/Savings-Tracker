@@ -1,4 +1,4 @@
-const CACHE = 'savings-tracker-v1';
+const CACHE = 'savings-tracker-v2';
 const ASSETS = [
   './index.html',
   './manifest.json',

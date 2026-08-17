@@ -763,7 +763,7 @@
 
 <script>
   // Bump whenever the file changes so you can confirm which build is live.
-  const APP_VERSION = '2026.08.17d';
+  const APP_VERSION = '2026.08.17e';
 
   // ══════════════════════════════════════════════════════
   //  TAB SWITCHING
@@ -1109,10 +1109,7 @@
     const meaningful =
       (values[TAB.coffee]   || []).length ||
       (values[TAB.bought]   || []).length ||
-      (values[TAB.indulged] || []).length ||
-      (values[TAB.training] || []).length ||
-      (values[TAB.creds]    || []).length ||
-      (values[TAB.social]   || []).some(r => r[1] || r[2]);
+      (values[TAB.indulged] || []).length;
     if (!meaningful) throw new Error('Refusing to sync: nothing to save — this would wipe your sheet.');
     return true;
   }
@@ -1150,9 +1147,8 @@
     entries           = readLS('coffeeEntries','[]') || [];
     boughtEntries     = readLS('coffeeBought','[]')  || [];
     indulged          = new Set(readLS('indulgedDays','[]') || []);
-    reloadFromStorage();
-      return restored;
-    } catch (e) { return false; }
+    render();
+    renderCalendar();
   }
 
   // On first connect: find an existing sheet and restore from it, otherwise
