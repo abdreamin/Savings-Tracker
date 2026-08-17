@@ -763,7 +763,7 @@
 
 <script>
   // Bump whenever the file changes so you can confirm which build is live.
-  const APP_VERSION = '2026.08.17e';
+  const APP_VERSION = '2026.08.17f';
 
   // ══════════════════════════════════════════════════════
   //  TAB SWITCHING
@@ -1082,6 +1082,134 @@
     driveSync.accessToken = null; driveSync.tokenExpiry = 0;
     localStorage.removeItem(DRIVE_TOKEN_KEY); localStorage.removeItem(DRIVE_TOKEN_EXPIRY);
     setDriveStatus('off');
+  }
+
+  // ── Google Sheets / Drive REST helpers ───────────────────────────────
+  async function sheetsApi(path, opts = {}) {
+    const url = 'https://sheets.googleapis.com/v4/spreadsheets' + path;
+    const res = await fetch(url, {
+      ...opts,
+      headers: {
+        'Authorization': 'Bearer ' + driveSync.accessToken,
+        'Content-Type': 'application/json',
+        ...(opts.headers || {})
+      }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err.error && err.error.message) || res.statusText);
+    }
+    return res.json();
+  }
+
+  async function driveApi(path, opts = {}) {
+    const url = 'https://www.googleapis.com/drive/v3' + path;
+    const res = await fetch(url, {
+      ...opts,
+      headers: {
+        'Authorization': 'Bearer ' + driveSync.accessToken,
+        'Content-Type': 'application/json',
+        ...(opts.headers || {})
+      }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err.error && err.error.message) || res.statusText);
+    }
+    return res.json();
+  }
+
+  async function findExistingSheet() {
+    const q = encodeURIComponent(`name='${SHEET_FILE_NAME}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
+    const data = await driveApi(`/files?q=${q}&fields=files(id,name)&spaces=drive`);
+    if (data.files && data.files.length > 0) {
+      driveSync.sheetId = data.files[0].id;
+      localStorage.setItem(SHEET_ID_KEY, driveSync.sheetId);
+      return true;
+    }
+    return false;
+  }
+
+  async function createSheet() {
+    const data = await sheetsApi('', {
+      method: 'POST',
+      body: JSON.stringify({
+        properties: { title: SHEET_FILE_NAME },
+        sheets: TAB_LIST.map(title => ({ properties: { title } }))
+      })
+    });
+    driveSync.sheetId = data.spreadsheetId;
+    localStorage.setItem(SHEET_ID_KEY, driveSync.sheetId);
+    return driveSync.sheetId;
+  }
+
+  async function ensureSheetTabs() {
+    const meta = await sheetsApi('/' + driveSync.sheetId + '?fields=sheets.properties');
+    const existingTitles = (meta.sheets || []).map(s => s.properties.title);
+    const missing = TAB_LIST.filter(t => !existingTitles.includes(t));
+    if (!missing.length) return;
+    await sheetsApi('/' + driveSync.sheetId + ':batchUpdate', {
+      method: 'POST',
+      body: JSON.stringify({
+        requests: missing.map(title => ({ addSheet: { properties: { title } } }))
+      })
+    });
+  }
+
+  async function readSheet() {
+    const ranges = TAB_LIST.map(t => encodeURIComponent(t)).join('&ranges=');
+    const data = await sheetsApi(`/${driveSync.sheetId}/values:batchGet?ranges=${ranges}`);
+    const byTab = {};
+    (data.valueRanges || []).forEach(vr => {
+      const name = vr.range ? vr.range.split('!')[0].replace(/^'|'$/g, '') : '';
+      byTab[name] = (vr.values || []).slice(1); // skip header row
+    });
+    return byTab;
+  }
+
+  function sheetHasData(byTab) {
+    return TAB_LIST.some(t => (byTab[t] || []).length > 0);
+  }
+
+  async function driveSyncNow() {
+    if (!driveSync.sheetId) {
+      await createSheet();
+    } else {
+      await ensureSheetTabs();
+    }
+    const values = buildSheetValues();
+    assertDataValid(values);
+    const data = TAB_LIST.map(tab => ({
+      range: "'" + tab + "'!A1",
+      values: [HEADERS[tab] || [], ...(values[tab] || [])]
+    }));
+    await sheetsApi('/' + driveSync.sheetId + '/values:batchUpdate', {
+      method: 'POST',
+      body: JSON.stringify({ valueInputOption: 'RAW', data })
+    });
+    driveSync.lastSyncedAt = Date.now();
+    localStorage.setItem(DRIVE_LASTSYNC_KEY, String(driveSync.lastSyncedAt));
+    clearDirty();
+    setDriveStatus('connected', 'Synced just now');
+  }
+
+  async function migrateLegacyJson() {
+    try {
+      const q = encodeURIComponent(`name='${LEGACY_JSON_NAME}' and trashed=false`);
+      const data = await driveApi(`/files?q=${q}&fields=files(id,name)&spaces=drive`);
+      if (!data.files || !data.files.length) return false;
+      const fileId = data.files[0].id;
+      const res = await fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
+        headers: { 'Authorization': 'Bearer ' + driveSync.accessToken }
+      });
+      if (!res.ok) return false;
+      const json = await res.json();
+      if (json.coffeeEntries) localStorage.setItem('coffeeEntries', JSON.stringify(json.coffeeEntries));
+      if (json.coffeeBought)  localStorage.setItem('coffeeBought',  JSON.stringify(json.coffeeBought));
+      if (json.indulgedDays)  localStorage.setItem('indulgedDays',  JSON.stringify(json.indulgedDays));
+      reloadFromStorage();
+      return true;
+    } catch (e) { return false; }
   }
 
   // ── localStorage → sheet rows ─────────────────────────────────────
