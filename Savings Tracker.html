@@ -1,0 +1,1862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <title>Alia's Tracker</title>
+
+  <!-- PWA: installable to home screen, runs full-screen offline -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#7d4560">
+  <meta name="description" content="Coffee savings, social media sobriety, half marathon training, and nursing license tracker.">
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Tracker">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- Google Identity Services (for Drive sync sign-in) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      color-scheme: light;
+      --brown-dark:  #4a2535;
+      --brown-mid:   #7d4560;
+      --brown-light: #c8849e;
+      --cream:       #fdf6f8;
+      --cream-dark:  #f0dce3;
+      --green:       #4caf50;
+      --green-light: #e8f5e9;
+      --red:         #e53935;
+      --text:        #2c1020;
+      --muted:       #9e6080;
+      --shadow:      rgba(74,37,53,.18);
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+      background: #c8a0b0;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: -20px;
+      background-image: url('https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=1920&q=80');
+      background-size: cover;
+      background-position: center;
+      filter: blur(6px) brightness(1.15) saturate(0.85);
+      z-index: 0;
+      transition: background-image 0.4s ease;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: rgba(255, 240, 245, 0.4);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ── Header ── */
+    header {
+      position: relative;
+      z-index: 1;
+      background: linear-gradient(135deg, #4a2535 0%, #7d4560 100%);
+      border-bottom: 1px solid rgba(200,132,158,.2);
+      color: #fff;
+      padding: 1.2rem 2rem 0;
+      box-shadow: 0 4px 20px rgba(0,0,0,.4);
+    }
+    .header-top {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding-bottom: 1rem;
+    }
+    .logo-wrap {
+      font-size: 2.2rem;
+      line-height: 1;
+      filter: drop-shadow(0 2px 6px rgba(200,145,106,.5));
+    }
+    header h1 {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: .02em;
+      background: linear-gradient(90deg, #fff 0%, #f0c0d4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header .quote {
+      font-size: .82rem;
+      color: var(--brown-light);
+      margin-top: .25rem;
+      font-style: italic;
+      opacity: .9;
+    }
+
+    /* ── Tab Bar ── */
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      position: relative;
+      z-index: 1;
+    }
+    .tab-btn {
+      padding: .75rem 1.5rem;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      color: rgba(255,255,255,0.55);
+      font-size: .92rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: color .2s, border-color .2s;
+      letter-spacing: .01em;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: rgba(255,255,255,0.8); }
+    .tab-btn.active {
+      color: #fff;
+      border-bottom-color: var(--brown-light);
+    }
+
+    /* ── Layout ── */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    main {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    /* ── Credential detail rows ── */
+    .cred-row {
+      display: flex; justify-content: space-between; gap: 1rem;
+      padding: .5rem 0; border-bottom: 1px solid var(--cream-dark);
+      font-size: .85rem; align-items: baseline;
+    }
+    .cred-row:last-of-type { border-bottom: none; }
+    .cred-label { color: var(--muted); font-weight: 600; flex: 0 0 auto; }
+    .cred-value { text-align: right; color: var(--text); word-break: break-word; }
+    .cred-card { transition: transform .12s ease, box-shadow .12s ease; }
+    .cred-card:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,.09); }
+
+    /* ── App footer / version stamp ── */
+    .app-footer {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto 2rem;
+      padding: 1rem;
+      text-align: center;
+      font-size: .72rem;
+      color: var(--muted);
+      opacity: .75;
+      letter-spacing: .02em;
+    }
+    .app-footer .ver {
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+      border-bottom: 1px dotted currentColor;
+    }
+    .app-footer .ver:hover { opacity: 1; }
+
+    /* ── Cards ── */
+    .card {
+      background: rgba(253, 246, 238, 0.97);
+      backdrop-filter: blur(4px);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 24px rgba(0,0,0,.3), 0 1px 0 rgba(255,255,255,.1) inset;
+      border: 1px solid rgba(200,145,106,.15);
+    }
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--brown-mid);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+
+    /* ── Stats row ── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+    .stat {
+      background: linear-gradient(135deg, rgba(253,246,238,.97) 0%, rgba(240,224,200,.97) 100%);
+      backdrop-filter: blur(4px);
+      border-radius: 14px;
+      padding: 1.2rem 1rem;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,.25), 0 1px 0 rgba(255,255,255,.3) inset;
+      border: 1px solid rgba(200,145,106,.2);
+    }
+    .stat .amount {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--green);
+      line-height: 1;
+    }
+    .stat .label {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-top: .4rem;
+    }
+
+    /* ── Form ── */
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto auto;
+      gap: .75rem;
+      align-items: end;
+    }
+    label { display: block; font-size: .8rem; font-weight: 600; color: var(--muted); margin-bottom: .3rem; }
+    input[type="text"],
+    input[type="number"],
+    input[type="date"] {
+      width: 100%;
+      padding: .65rem .9rem;
+      border: 1.5px solid var(--cream-dark);
+      border-radius: 10px;
+      font-size: .95rem;
+      color: var(--text);
+      background: var(--cream);
+      outline: none;
+      transition: border-color .2s;
+    }
+    input:focus { border-color: var(--brown-light); }
+    .price-wrap { position: relative; }
+    .price-wrap span {
+      position: absolute;
+      left: .75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: .95rem;
+      pointer-events: none;
+    }
+    .price-wrap input { padding-left: 1.6rem; }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 10px;
+      font-size: .9rem;
+      font-weight: 700;
+      transition: opacity .15s, transform .1s;
+    }
+    button:active { transform: scale(.97); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--brown-mid) 0%, var(--brown-dark) 100%);
+      color: #fff;
+      padding: .65rem 1.4rem;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(59,31,14,.3);
+    }
+    .btn-primary:hover { opacity: .88; }
+    .btn-danger {
+      background: none;
+      color: var(--red);
+      padding: .3rem .5rem;
+      font-size: .85rem;
+    }
+    .btn-danger:hover { opacity: .7; }
+
+    /* ── Calendar ── */
+    .cal-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .cal-nav button {
+      background: var(--cream-dark);
+      color: var(--brown-dark);
+      padding: .4rem .9rem;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+    .cal-nav button:hover { background: var(--brown-light); color: #fff; }
+    .cal-title { font-weight: 700; font-size: 1rem; color: var(--text); }
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    .cal-day-name {
+      text-align: center;
+      font-size: .7rem;
+      font-weight: 700;
+      color: var(--muted);
+      padding: .3rem 0;
+    }
+    .cal-cell {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: .8rem;
+      font-weight: 600;
+      cursor: default;
+      position: relative;
+      background: var(--cream);
+      color: var(--muted);
+    }
+    .cal-cell.empty { background: transparent; }
+    .cal-cell.today { outline: 2px solid var(--brown-light); }
+    .cal-cell.saved { background: var(--green-light); color: var(--green); }
+    .cal-cell.saved .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-top: 2px; }
+    .cal-cell:not(.empty) { cursor: pointer; }
+    .cal-cell:not(.empty):hover { opacity: .8; }
+    .cal-cell.indulged { background: #fff3e0; color: #bf6c00; }
+    .cal-cell.indulged .cup { font-size: .75rem; line-height: 1; margin-top: 1px; }
+    .cal-cell.saved.indulged { background: linear-gradient(135deg, var(--green-light) 50%, #fff3e0 50%); }
+    .cal-legend { display: flex; gap: 1.2rem; margin-top: .9rem; font-size: .75rem; color: var(--muted); flex-wrap: wrap; }
+    .cal-legend span { display: flex; align-items: center; gap: .35rem; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); display: inline-block; }
+    .cal-hint { font-size: .72rem; color: var(--muted); font-style: italic; margin-top: .5rem; }
+    .cal-cell .tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--brown-dark);
+      color: #fff;
+      font-size: .7rem;
+      border-radius: 6px;
+      padding: .35rem .6rem;
+      white-space: nowrap;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .cal-cell.saved:hover .tooltip { display: block; }
+
+    /* ── Log ── */
+    .log-list { display: flex; flex-direction: column; gap: .6rem; }
+    .log-item {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      background: var(--cream);
+      border-radius: 10px;
+      padding: .7rem .9rem;
+    }
+    .log-item .icon { font-size: 1.2rem; }
+    .log-item .info { flex: 1; }
+    .log-item .name { font-weight: 600; font-size: .9rem; }
+    .log-item .meta { font-size: .75rem; color: var(--muted); margin-top: .1rem; }
+    .log-item .price { font-weight: 800; color: var(--green); font-size: .95rem; min-width: 3.5rem; text-align: right; }
+    .empty-state { text-align: center; color: var(--muted); font-size: .9rem; padding: 1.5rem 0; }
+
+    /* ── Export ── */
+    .export-bar { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; }
+    .btn-export {
+      background: var(--cream-dark); color: var(--brown-dark);
+      padding: .6rem 1.1rem; border-radius: 10px;
+      font-size: .85rem; font-weight: 700;
+      display: flex; align-items: center; gap: .4rem;
+    }
+    .btn-export:hover { background: var(--brown-light); color: #fff; }
+    .btn-sheets {
+      background: #1a73e8; color: #fff;
+      padding: .6rem 1.1rem; border-radius: 10px;
+      font-size: .85rem; font-weight: 700;
+      display: flex; align-items: center; gap: .4rem;
+    }
+    .btn-sheets:hover { opacity: .88; }
+    .btn-sheets:disabled { opacity: .5; cursor: not-allowed; }
+    .sync-status { font-size: .8rem; color: var(--muted); font-style: italic; }
+    .sync-status.ok  { color: var(--green); }
+    .sync-status.err { color: var(--red); }
+    .sheets-setup { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--cream-dark); }
+    .sheets-setup p { font-size: .8rem; color: var(--muted); margin-bottom: .5rem; line-height: 1.5; }
+    .sheets-setup .url-row { display: flex; gap: .5rem; }
+    .sheets-setup input { flex: 1; font-size: .8rem; }
+    .btn-save-url { background: var(--brown-mid); color: #fff; padding: .6rem 1rem; border-radius: 10px; font-size: .8rem; font-weight: 700; white-space: nowrap; }
+    .btn-save-url:hover { opacity: .88; }
+    details summary { cursor: pointer; font-size: .8rem; color: var(--brown-mid); font-weight: 700; user-select: none; margin-top: .75rem; }
+    details summary:hover { opacity: .75; }
+    .setup-steps { margin-top: .6rem; font-size: .78rem; color: var(--text); line-height: 1.7; background: var(--cream); border-radius: 10px; padding: .9rem 1rem; }
+    .setup-steps code { display: block; background: #2c1a0e; color: #f5ddb4; border-radius: 8px; padding: .7rem .9rem; font-size: .75rem; margin: .5rem 0; white-space: pre; overflow-x: auto; }
+
+    @media (max-width: 640px) {
+      .stats { grid-template-columns: 1fr 1fr; }
+      .form-row { grid-template-columns: 1fr 1fr; }
+      .form-row .full { grid-column: 1 / -1; }
+      .form-row button { grid-column: 1 / -1; }
+      .sm-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Welcome Modal ── */
+    .welcome-modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      background: rgba(40, 20, 30, 0.6);
+      backdrop-filter: blur(6px);
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .welcome-modal-backdrop.show { display: flex; }
+    .welcome-modal {
+      background: rgba(253, 246, 238, 0.99);
+      border-radius: 20px;
+      padding: 2rem 1.75rem 1.75rem;
+      max-width: 380px;
+      width: 100%;
+      box-shadow: 0 8px 40px rgba(0,0,0,.4);
+      text-align: center;
+      animation: modalPop .3s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    @keyframes modalPop {
+      from { transform: scale(.88) translateY(12px); opacity: 0; }
+      to   { transform: scale(1)   translateY(0);    opacity: 1; }
+    }
+    .welcome-modal .wm-emoji  { font-size: 3rem; line-height: 1; margin-bottom: .75rem; }
+    .welcome-modal .wm-title  { font-size: 1.25rem; font-weight: 800; color: var(--brown-dark); margin-bottom: .4rem; }
+    .welcome-modal .wm-sub    { font-size: .85rem; color: var(--muted); margin-bottom: 1.5rem; line-height: 1.5; }
+    .welcome-modal .wm-btns   { display: flex; flex-direction: column; gap: .6rem; }
+    .wm-btn {
+      width: 100%; padding: .85rem 1rem;
+      border: none; border-radius: 12px;
+      font-size: .95rem; font-weight: 700;
+      cursor: pointer; transition: all .15s ease;
+      display: flex; align-items: center; gap: .65rem;
+    }
+    .wm-btn-skip   { background: linear-gradient(135deg, #4caf50, #2e7d32); color: #fff; }
+    .wm-btn-skip:hover { opacity: .9; transform: translateY(-1px); }
+    .wm-btn-bought { background: linear-gradient(135deg, var(--brown-mid), var(--brown-dark)); color: #fff; }
+    .wm-btn-bought:hover { opacity: .9; transform: translateY(-1px); }
+    .wm-btn-quiz   { background: linear-gradient(135deg, #fff3e0, #ffe0b2); color: #7a4010; border: 2px solid #f0c080; }
+    .wm-btn-quiz:hover { opacity: .9; transform: translateY(-1px); border-color: #e8a020; }
+    .wm-btn-none   { background: var(--cream-dark); color: var(--muted); }
+    .wm-btn-none:hover { background: #e0cdd4; }
+    .wm-btn .wm-btn-icon  { font-size: 1.3rem; }
+    .wm-btn .wm-btn-label { flex: 1; text-align: left; }
+    .wm-btn .wm-btn-sub   { font-size: .75rem; font-weight: 400; opacity: .85; display: block; margin-top: 1px; }
+    .wm-dismiss { margin-top: .85rem; font-size: .78rem; color: var(--muted); cursor: pointer; opacity: .7; }
+    .wm-dismiss:hover { opacity: 1; }
+
+    /* ── Quiz Modal ── */
+    .quiz-modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      background: rgba(40, 20, 30, 0.6);
+      backdrop-filter: blur(6px);
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .quiz-modal-backdrop.show { display: flex; }
+    .quiz-modal {
+      background: rgba(253, 246, 238, 0.99);
+      border-radius: 20px;
+      padding: 1.75rem;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 8px 40px rgba(0,0,0,.4);
+      animation: modalPop .3s cubic-bezier(.34,1.56,.64,1) both;
+      position: relative;
+    }
+    .quiz-progress { display: flex; gap: 4px; margin-bottom: 1.25rem; }
+    .quiz-progress-dot {
+      flex: 1; height: 4px; border-radius: 99px;
+      background: var(--cream-dark); transition: background .3s;
+    }
+    .quiz-progress-dot.done    { background: var(--brown-light); }
+    .quiz-progress-dot.current { background: var(--brown-mid); }
+    .quiz-q-emoji { font-size: 2.2rem; text-align: center; margin-bottom: .5rem; }
+    .quiz-q-text  { font-size: 1.1rem; font-weight: 800; color: var(--brown-dark); text-align: center; margin-bottom: .35rem; line-height: 1.35; }
+    .quiz-q-sub   { font-size: .8rem; color: var(--muted); text-align: center; margin-bottom: 1.25rem; line-height: 1.5; }
+    .quiz-choices { display: flex; flex-direction: column; gap: .5rem; }
+    .quiz-choice {
+      width: 100%; padding: .75rem 1rem;
+      border: 2px solid var(--cream-dark);
+      border-radius: 12px; background: var(--cream);
+      font-size: .92rem; font-weight: 600; color: var(--text);
+      cursor: pointer; text-align: left;
+      transition: all .15s ease;
+      display: flex; align-items: center; gap: .6rem;
+    }
+    .quiz-choice:hover { border-color: var(--brown-light); background: #fdf0f5; transform: translateX(3px); }
+    .quiz-choice .qc-icon { font-size: 1.2rem; flex-shrink: 0; }
+    .quiz-close-x {
+      position: absolute; top: .9rem; right: 1rem;
+      background: none; border: none; font-size: 1.5rem;
+      color: var(--muted); cursor: pointer; line-height: 1; opacity: .5;
+    }
+    .quiz-close-x:hover { opacity: 1; }
+    .quiz-back-btn {
+      background: none; border: none; cursor: pointer;
+      font-size: .8rem; color: var(--muted);
+      padding: 0; margin-bottom: .75rem;
+      display: flex; align-items: center; gap: .3rem;
+    }
+    .quiz-back-btn:hover { color: var(--brown-mid); }
+    .quiz-result { text-align: center; }
+    .quiz-result-emoji  { font-size: 4rem; line-height: 1; margin-bottom: .75rem; }
+    .quiz-result-title  { font-size: 1.25rem; font-weight: 800; color: var(--brown-dark); margin-bottom: .5rem; line-height: 1.3; }
+    .quiz-result-sub    { font-size: .88rem; color: var(--muted); margin-bottom: 1.4rem; line-height: 1.6; }
+    .quiz-result-btns   { display: flex; gap: .5rem; flex-direction: column; }
+    .quiz-result-btn {
+      padding: .75rem 1rem; border: none; border-radius: 12px;
+      font-size: .92rem; font-weight: 700; cursor: pointer;
+      transition: all .15s ease;
+    }
+    .quiz-result-btn.primary { background: linear-gradient(135deg, var(--brown-mid), var(--brown-dark)); color: #fff; }
+    .quiz-result-btn.primary:hover { opacity: .88; }
+    .quiz-result-btn.secondary { background: var(--cream-dark); color: var(--muted); font-weight: 600; font-size: .85rem; }
+    .quiz-result-btn.secondary:hover { background: #e0cdd4; color: var(--text); }
+
+    /* ── Quiz trigger button in coffee tab ── */
+    .btn-quiz-trigger {
+      background: linear-gradient(135deg, #fff8f0, #fde8d0);
+      border: 2px solid #f0c080;
+      border-radius: 14px;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: .85rem;
+      width: 100%;
+      text-align: left;
+      transition: all .2s ease;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+    }
+    .btn-quiz-trigger:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.14); border-color: #e8a020; }
+    .btn-quiz-trigger .qt-icon  { font-size: 2rem; line-height: 1; flex-shrink: 0; }
+    .btn-quiz-trigger .qt-text  { flex: 1; }
+    .btn-quiz-trigger .qt-label { font-size: 1rem; font-weight: 800; color: #7a4010; display: block; }
+    .btn-quiz-trigger .qt-sub   { font-size: .78rem; color: #b06030; margin-top: 2px; display: block; }
+    .btn-quiz-trigger .qt-arrow { font-size: 1.2rem; color: #e8a020; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="logo-wrap" id="headerLogo">☕</div>
+    <div>
+      <h1 id="headerTitle">Alia's Coffee Savings Tracker</h1>
+      <div class="quote" id="weeklyQuote"></div>
+    </div>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('coffee')">☕ Coffee Savings</button>
+  </div>
+</header>
+
+<!-- ═══════════════════════ COFFEE TAB ═══════════════════════ -->
+<div class="tab-panel active" id="tab-coffee">
+  <main>
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat">
+        <div class="amount" id="statTotal">$0.00</div>
+        <div class="label">Total Saved</div>
+      </div>
+      <div class="stat">
+        <div class="amount" id="statCount">0</div>
+        <div class="label">Coffees Skipped</div>
+      </div>
+      <div class="stat">
+        <div class="amount" id="statDays">0</div>
+        <div class="label">Days with Savings</div>
+      </div>
+    </div>
+
+    <!-- Coffee streak badge -->
+    <div id="coffeeStreakBadge" style="display:none; text-align:center;">
+      <div class="coffee-streak-badge">
+        <span class="coffee-streak-flame" id="coffeeStreakFlame"></span>
+        <span id="coffeeStreakText"></span>
+      </div>
+    </div>
+
+    <!-- Should I get a drink? quiz trigger -->
+    <button class="btn-quiz-trigger" onclick="openQuiz()">
+      <span class="qt-icon">🤔</span>
+      <span class="qt-text">
+        <span class="qt-label">Should I get a drink?</span>
+        <span class="qt-sub">Answer a few questions — most paths lead to no 😄</span>
+      </span>
+      <span class="qt-arrow">›</span>
+    </button>
+
+    <!-- Log form -->
+    <div class="card">
+      <h2>☕ Log a Skipped Coffee</h2>
+      <div class="form-row">
+        <div>
+          <label for="coffeeName">Coffee Name</label>
+          <input type="text" id="coffeeName" placeholder="e.g. Oat Latte" />
+        </div>
+        <div>
+          <label for="coffeePlace">Where From?</label>
+          <input type="text" id="coffeePlace" placeholder="e.g. Starbucks" />
+        </div>
+        <div>
+          <label for="coffeePrice">Price Saved</label>
+          <div class="price-wrap">
+            <span>$</span>
+            <input type="number" id="coffeePrice" placeholder="0.00" step="0.01" min="0" style="width:110px" />
+          </div>
+        </div>
+        <div>
+          <label for="coffeeDate">Date</label>
+          <input type="date" id="coffeeDate" />
+        </div>
+      </div>
+      <div style="margin-top:.9rem">
+        <button class="btn-primary" onclick="addEntry()">+ Save It</button>
+      </div>
+    </div>
+
+    <!-- Log a bought coffee -->
+    <div class="card">
+      <h2>🛍️ Log a Bought Coffee</h2>
+      <div class="form-row">
+        <div>
+          <label for="boughtName">Coffee Name</label>
+          <input type="text" id="boughtName" placeholder="e.g. Oat Latte" />
+        </div>
+        <div>
+          <label for="boughtPlace">Where From?</label>
+          <input type="text" id="boughtPlace" placeholder="e.g. Starbucks" />
+        </div>
+        <div>
+          <label for="boughtDate">Date</label>
+          <input type="date" id="boughtDate" />
+        </div>
+      </div>
+      <div style="margin-top:.9rem">
+        <button class="btn-primary" onclick="addBoughtEntry()" style="background:linear-gradient(135deg,#7d4560,#4a2535)">+ Log It</button>
+      </div>
+    </div>
+
+    <!-- Export & Sync -->
+    <div class="card">
+      <h2>📊 Google Sheets Sync</h2>
+      <p style="font-size:.82rem; color:var(--muted); margin-bottom:.9rem;">Sign in with Google to sync all your data across devices. Everything is saved to a single private Google Sheet in your own Drive — <strong>Alia HQ Data</strong>, one tab per tracker — so you can open and read it any time. Nothing is shared with anyone.</p>
+
+      <!-- Sync status card -->
+      <div id="syncStatusCard" style="background:#fafaf7; border:1px solid var(--cream-dark); border-radius:8px; padding:.75rem 1rem; margin-bottom:.85rem; display:flex; align-items:center; gap:.75rem;">
+        <div id="syncDot" style="width:10px; height:10px; border-radius:50%; background:#bbb; flex:0 0 auto;"></div>
+        <div>
+          <div id="syncStatusText" style="font-weight:600; font-size:.88rem;">Not connected</div>
+          <div id="syncStatusSub" style="font-size:.75rem; color:var(--muted);"></div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.75rem;">
+        <button class="btn-export" onclick="downloadCSV()">⬇️ Export CSV</button>
+        <button class="btn-sheets" id="btnDriveConnect" onclick="connectDrive()">🔗 Connect Google</button>
+        <button class="btn-sheets" id="btnDriveSync" onclick="manualDriveSync()" style="display:none;">🔄 Sync Now</button>
+        <button class="btn-export" id="btnOpenSheet" onclick="openSheet()" style="display:none;">📊 Open Sheet</button>
+        <button class="btn-export" id="btnPullSheet" onclick="pullFromSheet()" style="display:none;">⬇️ Pull from Sheet</button>
+        <button style="background:none; border:1px solid var(--cream-dark); border-radius:8px; padding:.4rem .8rem; font-size:.8rem; color:var(--muted); cursor:pointer;" id="btnDriveDisconnect" onclick="disconnectDrive()" style="display:none;">Disconnect</button>
+      </div>
+
+      <details>
+        <summary style="font-size:.82rem; color:var(--muted); cursor:pointer;">▸ One-time setup (takes ~5 min)</summary>
+        <div class="setup-steps" style="margin-top:.6rem;">
+          <strong>Step 1:</strong> Go to <a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a> and create a new project (or pick an existing one).<br><br>
+          <strong>Step 2:</strong> Go to <strong>APIs &amp; Services → Library</strong> and enable both the <strong>Google Sheets API</strong> and the <strong>Google Drive API</strong>.<br><br>
+          <strong>Step 3:</strong> Go to <strong>APIs &amp; Services → OAuth consent screen</strong>. Choose <strong>External</strong>, fill in app name + your email, add your email as a test user. Save.<br><br>
+          <strong>Step 4:</strong> Go to <strong>APIs &amp; Services → Credentials → Create Credentials → OAuth client ID</strong>. Application type: <strong>Web application</strong>. Add your hosting URL to "Authorized JavaScript origins" (e.g. <code>https://yoursite.com</code>). Copy the Client ID.<br><br>
+          <strong>Step 5:</strong> Paste it below and click Save.<br><br>
+          <div style="display:flex; gap:.5rem; margin-top:.4rem;">
+            <input type="text" id="driveClientId" placeholder="Paste OAuth Client ID here…" style="flex:1; padding:.45rem .75rem; border:1px solid var(--cream-dark); border-radius:8px; font-size:.85rem;" />
+            <button class="btn-save-url" onclick="saveDriveClientId()">Save</button>
+          </div>
+          <div id="clientIdSaved" style="font-size:.78rem; color:var(--green); margin-top:.3rem; display:none;">✓ Client ID saved</div>
+        </div>
+      </details>
+    </div>
+
+    <!-- Combined coffee log -->
+    <div class="card">
+      <h2>📋 Coffee Log</h2>
+      <div class="log-list" id="logList"></div>
+    </div>
+  </main>
+</div>
+
+</div>
+
+<!-- ═══════════════════════ WELCOME MODAL ═══════════════════════ -->
+<div class="welcome-modal-backdrop" id="welcomeModal" onclick="if(event.target===this)dismissWelcome()">
+  <div class="welcome-modal">
+    <div class="wm-emoji">☕</div>
+    <div class="wm-title">Hey Alia! ✨</div>
+    <div class="wm-sub">Want to log a coffee decision from today?</div>
+    <div class="wm-btns">
+      <button class="wm-btn wm-btn-skip" onclick="welcomeAction('skip')">
+        <span class="wm-btn-icon">✅</span>
+        <span class="wm-btn-label">
+          I skipped a coffee
+          <span class="wm-btn-sub">Log it and save that money 💸</span>
+        </span>
+      </button>
+      <button class="wm-btn wm-btn-bought" onclick="welcomeAction('bought')">
+        <span class="wm-btn-icon">☕</span>
+        <span class="wm-btn-label">
+          I bought a coffee
+          <span class="wm-btn-sub">No judgment, just tracking 😌</span>
+        </span>
+      </button>
+      <button class="wm-btn wm-btn-quiz" onclick="welcomeAction('quiz')">
+        <span class="wm-btn-icon">🤔</span>
+        <span class="wm-btn-label">
+          Should I get a drink?
+          <span class="wm-btn-sub">Let me talk you through it…</span>
+        </span>
+      </button>
+      <button class="wm-btn wm-btn-none" onclick="welcomeAction('none')">
+        <span class="wm-btn-icon">👋</span>
+        <span class="wm-btn-label">
+          No coffee today
+          <span class="wm-btn-sub">Just checking in</span>
+        </span>
+      </button>
+    </div>
+    <div class="wm-dismiss" onclick="dismissWelcome()">remind me later</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ QUIZ MODAL ═══════════════════════ -->
+<div class="quiz-modal-backdrop" id="quizModal" onclick="if(event.target===this)closeQuiz()">
+  <div class="quiz-modal">
+    <div id="quizInner"></div>
+  </div>
+</div>
+
+<!-- Always-visible build stamp -->
+<footer class="app-footer">
+  Alia HQ <span class="ver" id="appVersion" title="Tap to check for a newer version">v…</span>
+</footer>
+
+<script>
+  // Bump whenever the file changes so you can confirm which build is live.
+  const APP_VERSION = '2026.08.17c';
+
+  // ══════════════════════════════════════════════════════
+  //  TAB SWITCHING
+  // ══════════════════════════════════════════════════════
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    event.currentTarget.classList.add('active');
+
+    if (tab === 'coffee') {
+      document.getElementById('headerLogo').textContent = '☕';
+      document.getElementById('headerTitle').textContent = "Alia's Coffee Savings Tracker";
+      setWeeklyQuote('coffee');
+    }
+  }
+
+  // ══════════════════════════════════════════════════════
+  //  WEEKLY QUOTES
+  // ══════════════════════════════════════════════════════
+  const QUOTES = [
+    "Your wallet is warming up faster than your espresso. ☀️",
+    "That's one less latte and one step closer to something better. 💸",
+    "Skipping it today, splurging on life tomorrow. 🌟",
+    "You made the coffee at home. You're basically a barista now. 👩‍🍳",
+    "Future you just did a little happy dance. 💃",
+    "The best brew is the one you already made. ✨",
+    "Treating yourself later starts with saving now. 🎉",
+    "Your bank account says: thank you, thank you, thank you. 🙏",
+    "Small skips. Big sips of life. 🌈",
+    "Every 'not today' is a little victory. 🏆",
+    "Saving money one oat latte at a time. 🌿",
+    "Your future self is already bragging about this. 😎",
+    "Who needs a $7 coffee when you've got goals? 🚀",
+    "The only thing better than coffee? Money in the bank. 💰",
+    "Plot twist: your home brew hits different when it saves you $6. 🔄",
+    "Resist the menu. Build the dream. 💪",
+    "You made it through the urge. That's a win. 🎯",
+    "One skip closer to that thing you actually want. 🛍️",
+    "Your discipline just compounded. Just like interest. 📈",
+    "Barista-level willpower unlocked. ☕🔓",
+    "Not every cup needs to cost you. This one's on the house. 🏠",
+    "The coffee can wait. The savings can't. ⏰",
+    "Adulting: skipping coffee shops and calling it self-care. 🧘",
+    "Today's skip = tomorrow's treat. Balance, Alia. 🌺",
+    "Big things happen one small choice at a time. 🌱",
+    "You said no to the queue and yes to your goals. 👑",
+    "The math is mathing in your favor today. 🧮",
+    "Your mug at home is just as valid. More valid, actually. 🏡",
+    "Caffeinated AND financially savvy? That's rare. 💎",
+    "This week's challenge: accepted, crushed, logged. ✅",
+    "Your future latte fund says 'we appreciate you.' ☕💕",
+    "One skipped cup = one step closer to zero regrets. 🎊",
+    "Saved again. You're on a roll. 🎲",
+    "Not going to Starbucks is a personality trait now. 😌",
+    "Another day, another dollar literally saved. 💵",
+    "You've got this, and now you've got that money too. 🤑",
+    "Less café, more savings café. ☕🏦",
+    "Honestly? Your home coffee slaps. Keep saying that. 🎵",
+    "The best kind of streak: saving streaks. 🔥",
+    "Willpower: fueled by the coffee you already made at home. ⚡",
+    "That urge passed. So will the next one. You've got it. 🌊",
+    "Skipped once. Skipped twice. Starting to look like a habit. 💫",
+    "Every entry here is proof you're doing it. 📖",
+    "Alia: 1, Coffee Shop: 0. This week, at least. 😄",
+    "Making money moves, one skipped latte at a time. 🎯",
+    "Small wins add up to big ones. Trust the process. 🌠",
+    "You didn't need it. You knew that. Now it's logged. ✍️",
+    "Your willpower is caffeinated even without the extra cup. ⚡",
+    "Skipping the second cup is the new self-care. 💅",
+    "Today's mood: fiscally responsible and slightly smug. 😏",
+    "Compound savings, compound pride. That's the energy. 🌟",
+    "You chose your future self today. She's grateful. 🤗",
+  ];
+
+
+  function getWeekNumber(d) {
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+    return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+  }
+
+  function setWeeklyQuote(tab) {
+    const now  = new Date();
+    const week = getWeekNumber(now);
+    const year = now.getFullYear();
+    const idx  = (year * 53 + week) % QUOTES.length;
+    document.getElementById('weeklyQuote').textContent = QUOTES[idx];
+  }
+
+  // ══════════════════════════════════════════════════════
+  //  COFFEE TRACKER
+  // ══════════════════════════════════════════════════════
+  let entries       = JSON.parse(localStorage.getItem('coffeeEntries') || '[]');
+  let boughtEntries = JSON.parse(localStorage.getItem('coffeeBought')  || '[]');
+  let indulged = new Set(JSON.parse(localStorage.getItem('indulgedDays') || '[]'));
+  let calYear, calMonth;
+
+  const today = new Date();
+  calYear  = today.getFullYear();
+  calMonth = today.getMonth();
+
+  function save()       { localStorage.setItem('coffeeEntries', JSON.stringify(entries)); }
+  function saveBought() { localStorage.setItem('coffeeBought',  JSON.stringify(boughtEntries)); scheduleDriveSync(); }
+  function saveIndulged() { localStorage.setItem('indulgedDays', JSON.stringify([...indulged])); scheduleDriveSync(); }
+
+  function toggleIndulged(dateStr) {
+    indulged.has(dateStr) ? indulged.delete(dateStr) : indulged.add(dateStr);
+    saveIndulged();
+    renderCalendar();
+    scheduleDriveSync();
+  }
+
+  function addEntry() {
+    const name  = document.getElementById('coffeeName').value.trim();
+    const place = document.getElementById('coffeePlace').value.trim();
+    const price = parseFloat(document.getElementById('coffeePrice').value);
+    const date  = document.getElementById('coffeeDate').value;
+    if (!name)              { alert('Please enter a coffee name.'); return; }
+    if (isNaN(price)||price<=0) { alert('Please enter a valid price.'); return; }
+    if (!date)              { alert('Please select a date.'); return; }
+    entries.unshift({ id: Date.now(), name, place, price, date });
+    save(); render(); scheduleDriveSync();
+    document.getElementById('coffeeName').value  = '';
+    document.getElementById('coffeePlace').value = '';
+    document.getElementById('coffeePrice').value = '';
+  }
+
+  function deleteEntry(id) {
+    entries = entries.filter(e => e.id !== id);
+    save(); render();
+  }
+
+  function addBoughtEntry() {
+    const name  = document.getElementById('boughtName').value.trim();
+    const place = document.getElementById('boughtPlace').value.trim();
+    const date  = document.getElementById('boughtDate').value;
+    if (!name) { alert('Please enter a coffee name.'); return; }
+    if (!date) { alert('Please select a date.'); return; }
+    boughtEntries.unshift({ id: Date.now(), name, place, date });
+    saveBought(); renderLog();
+    document.getElementById('boughtName').value  = '';
+    document.getElementById('boughtPlace').value = '';
+  }
+
+  function deleteBoughtEntry(id) {
+    boughtEntries = boughtEntries.filter(e => e.id !== id);
+    saveBought(); renderLog();
+  }
+
+  function downloadCSV() {
+    if (!entries.length) { alert('No entries to export yet!'); return; }
+    const header = ['Date','Coffee Name','Place','Price Saved ($)'];
+    const rows   = entries.map(e => [e.date, `"${(e.name||'').replace(/"/g,'""')}"`, `"${(e.place||'').replace(/"/g,'""')}"`, e.price.toFixed(2)]);
+    const csv    = [header, ...rows].map(r => r.join(',')).join('\n');
+    const blob   = new Blob([csv], { type: 'text/csv' });
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement('a');
+    a.href = url; a.download = `coffee-savings-${new Date().toISOString().slice(0,10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ── Keys to sync across devices ──────────────────────────────────
+  const SYNC_KEYS = ['coffeeEntries','coffeeBought','indulgedDays'];
+
+  // ── Google Sheets sync ────────────────────────────────────────────
+  // All data lives in one private Google Sheet in your own Drive, with a
+  // tab per tracker, so you can open and read (or edit) it by hand. The
+  // OAuth scope stays drive.file — the app can only touch the single file
+  // it created, nothing else in your Drive.
+  const DRIVE_CLIENTID_KEY  = 'tracker_drive_clientId';
+  const DRIVE_FILEID_KEY    = 'tracker_drive_fileId';   // legacy JSON backup, kept for migration
+  const SHEET_ID_KEY        = 'tracker_sheet_id';
+  const DRIVE_TOKEN_KEY     = 'tracker_drive_token';
+  const DRIVE_TOKEN_EXPIRY  = 'tracker_drive_tokenExpiry';
+  const DRIVE_LASTSYNC_KEY  = 'tracker_drive_lastSync';
+  const DRIVE_DIRTY_KEY     = 'tracker_drive_dirty';
+  const SHEET_FILE_NAME     = 'Alia HQ Data';
+  const LEGACY_JSON_NAME    = 'alia-tracker-data.json';
+
+  const TAB = {
+    coffee:   'Coffee Saved',
+    bought:   'Coffee Bought',
+    indulged: 'Indulged Days',
+  };
+  const TAB_LIST = [TAB.coffee, TAB.bought, TAB.indulged];
+
+  const HEADERS = {
+    [TAB.coffee]:   ['ID','Date','Coffee','Place','Price Saved'],
+    [TAB.bought]:   ['ID','Date','Coffee','Place'],
+    [TAB.indulged]: ['Date'],
+  };
+
+  let driveSync = {
+    clientId: null, accessToken: null, tokenExpiry: 0,
+    sheetId: null, status: 'off', dirty: false,
+    lastSyncedAt: null, tokenClient: null, initialSyncDone: false
+  };
+
+  function loadDriveConfig() {
+    driveSync.clientId     = localStorage.getItem(DRIVE_CLIENTID_KEY);
+    driveSync.sheetId      = localStorage.getItem(SHEET_ID_KEY);
+    driveSync.lastSyncedAt = localStorage.getItem(DRIVE_LASTSYNC_KEY);
+    driveSync.dirty        = localStorage.getItem(DRIVE_DIRTY_KEY) === '1';
+    const token  = localStorage.getItem(DRIVE_TOKEN_KEY);
+    const expiry = parseInt(localStorage.getItem(DRIVE_TOKEN_EXPIRY) || '0', 10);
+    if (token && expiry > Date.now() + 30000) {
+      driveSync.accessToken = token;
+      driveSync.tokenExpiry = expiry;
+    }
+  }
+
+  function saveDriveToken() {
+    if (driveSync.accessToken) {
+      localStorage.setItem(DRIVE_TOKEN_KEY, driveSync.accessToken);
+      localStorage.setItem(DRIVE_TOKEN_EXPIRY, String(driveSync.tokenExpiry));
+    }
+  }
+
+  function setDirty()   { localStorage.setItem(DRIVE_DIRTY_KEY, '1'); driveSync.dirty = true; }
+  function clearDirty() { localStorage.removeItem(DRIVE_DIRTY_KEY);   driveSync.dirty = false; }
+
+  function sheetUrl() {
+    return driveSync.sheetId ? 'https://docs.google.com/spreadsheets/d/' + driveSync.sheetId + '/edit' : null;
+  }
+
+  function openSheet() {
+    const url = sheetUrl();
+    if (!url) { alert('No sheet yet — connect Google and sync once first.'); return; }
+    window.open(url, '_blank', 'noopener');
+  }
+
+  function setDriveStatus(status, msg) {
+    driveSync.status = status;
+    const dot  = document.getElementById('syncDot');
+    const text = document.getElementById('syncStatusText');
+    const sub  = document.getElementById('syncStatusSub');
+    const connectBtn    = document.getElementById('btnDriveConnect');
+    const syncBtn       = document.getElementById('btnDriveSync');
+    const openBtn       = document.getElementById('btnOpenSheet');
+    const disconnectBtn = document.getElementById('btnDriveDisconnect');
+    if (!dot) return;
+    const colors = { off:'#bbb', connecting:'#f9a825', connected:'#4caf50', syncing:'#f9a825', error:'#e53935' };
+    dot.style.background = colors[status] || '#bbb';
+    const labels = { off:'Not connected', connecting:'Connecting…', connected:'Sheet synced', syncing:'Syncing…', error:'Sync error' };
+    if (text) text.textContent = labels[status] || status;
+    if (sub)  sub.textContent  = msg || (driveSync.lastSyncedAt ? 'Last sync: ' + new Date(driveSync.lastSyncedAt).toLocaleString() : '');
+    if (connectBtn)    connectBtn.style.display    = (status === 'connected' || status === 'syncing') ? 'none' : '';
+    if (syncBtn)       syncBtn.style.display       = (status === 'connected') ? '' : 'none';
+    const pullBtn = document.getElementById('btnPullSheet');
+    const showSheetBtns = !!driveSync.sheetId && (status === 'connected' || status === 'syncing');
+    if (openBtn)       openBtn.style.display       = showSheetBtns ? '' : 'none';
+    if (pullBtn)       pullBtn.style.display       = showSheetBtns ? '' : 'none';
+    if (disconnectBtn) disconnectBtn.style.display = (status === 'connected' || status === 'syncing') ? '' : 'none';
+  }
+
+  function saveDriveClientId() {
+    const val = document.getElementById('driveClientId').value.trim();
+    if (!val) { alert('Paste your OAuth Client ID first.'); return; }
+    localStorage.setItem(DRIVE_CLIENTID_KEY, val);
+    driveSync.clientId = val;
+    document.getElementById('clientIdSaved').style.display = '';
+    setTimeout(() => { document.getElementById('clientIdSaved').style.display = 'none'; }, 3000);
+  }
+
+  function initTokenClient(hint) {
+    if (!window.google || !driveSync.clientId) return;
+    driveSync.tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: driveSync.clientId,
+      scope: 'https://www.googleapis.com/auth/drive.file',
+      hint,
+      callback: async (resp) => {
+        if (resp.error) { setDriveStatus('error', resp.error_description || resp.error); return; }
+        driveSync.accessToken = resp.access_token;
+        driveSync.tokenExpiry = Date.now() + (resp.expires_in * 1000) - 60000;
+        saveDriveToken();
+        if (!driveSync.initialSyncDone) {
+          await initialDriveSync();
+          driveSync.initialSyncDone = true;
+        } else {
+          setDriveStatus('connected');
+          await driveSyncNow();
+        }
+      }
+    });
+  }
+
+  async function ensureToken() {
+    if (driveSync.accessToken && Date.now() < driveSync.tokenExpiry) return;
+    if (!driveSync.tokenClient) initTokenClient('');
+    await new Promise((resolve, reject) => {
+      const orig = driveSync.tokenClient.callback;
+      driveSync.tokenClient.callback = (resp) => {
+        driveSync.tokenClient.callback = orig;
+        if (resp.error) reject(resp); else resolve(resp);
+      };
+      driveSync.tokenClient.requestAccessToken({ prompt: '' });
+    });
+  }
+
+  function connectDrive() {
+    if (!driveSync.clientId) { alert('Paste your Google OAuth Client ID in the setup section below first.'); return; }
+    if (!window.google || !window.google.accounts) { alert('Google sign-in is still loading — try again in a second.'); return; }
+    setDriveStatus('connecting');
+    try {
+      if (!driveSync.tokenClient) initTokenClient('');
+      driveSync.tokenClient.requestAccessToken();
+    } catch (e) { setDriveStatus('error', e.message); }
+  }
+
+  function disconnectDrive() {
+    if (driveSync.accessToken && window.google && google.accounts && google.accounts.oauth2) {
+      try { google.accounts.oauth2.revoke(driveSync.accessToken, () => {}); } catch (e) {}
+    }
+    driveSync.accessToken = null; driveSync.tokenExpiry = 0;
+    localStorage.removeItem(DRIVE_TOKEN_KEY); localStorage.removeItem(DRIVE_TOKEN_EXPIRY);
+    setDriveStatus('off');
+  }
+
+  // ── localStorage → sheet rows ─────────────────────────────────────
+  function readLS(key, fallback) {
+    try { return JSON.parse(localStorage.getItem(key) || fallback); }
+    catch (e) { return JSON.parse(fallback); }
+  }
+
+  function buildSheetValues() {
+    const out = {};
+
+    out[TAB.coffee] = (readLS('coffeeEntries','[]') || [])
+      .map(e => [e.id, e.date || '', e.name || '', e.place || '', Number(e.price) || 0]);
+
+    out[TAB.bought] = (readLS('coffeeBought','[]') || [])
+      .map(e => [e.id, e.date || '', e.name || '', e.place || '']);
+
+    out[TAB.indulged] = (readLS('indulgedDays','[]') || []).map(d => [d]);
+
+    return out;
+  }
+
+  // Guard: refuse to overwrite the sheet with an obviously empty payload
+  function assertDataValid(values) {
+    const meaningful =
+      (values[TAB.coffee]   || []).length ||
+      (values[TAB.bought]   || []).length ||
+      (values[TAB.indulged] || []).length ||
+      (values[TAB.training] || []).length ||
+      (values[TAB.creds]    || []).length ||
+      (values[TAB.social]   || []).some(r => r[1] || r[2]);
+    if (!meaningful) throw new Error('Refusing to sync: nothing to save — this would wipe your sheet.');
+    return true;
+  }
+
+  // ── sheet rows → localStorage ─────────────────────────────────────
+  function applySheetValues(byTab) {
+    const g = name => (byTab[name] || []).filter(r => r && r.some(c => String(c || '').trim() !== ''));
+
+    const coffee = g(TAB.coffee).map(r => ({
+      id: Number(r[0]) || Date.now() + Math.floor(Math.random()*1000),
+      date: String(r[1] || '').trim(),
+      name: String(r[2] || '').trim(),
+      place: String(r[3] || '').trim(),
+      price: parseFloat(r[4]) || 0
+    })).filter(e => e.date);
+    localStorage.setItem('coffeeEntries', JSON.stringify(coffee));
+
+    const bought = g(TAB.bought).map(r => ({
+      id: Number(r[0]) || Date.now() + Math.floor(Math.random()*1000),
+      date: String(r[1] || '').trim(),
+      name: String(r[2] || '').trim(),
+      place: String(r[3] || '').trim()
+    })).filter(e => e.date);
+    localStorage.setItem('coffeeBought', JSON.stringify(bought));
+
+    localStorage.setItem('indulgedDays', JSON.stringify(
+      g(TAB.indulged).map(r => String(r[0] || '').trim()).filter(Boolean)
+    ));
+
+    reloadFromStorage();
+  }
+
+  // Pull localStorage back into in-memory state and repaint everything
+  function reloadFromStorage() {
+    entries           = readLS('coffeeEntries','[]') || [];
+    boughtEntries     = readLS('coffeeBought','[]')  || [];
+    indulged          = new Set(readLS('indulgedDays','[]') || []);
+    reloadFromStorage();
+      return restored;
+    } catch (e) { return false; }
+  }
+
+  // On first connect: find an existing sheet and restore from it, otherwise
+  // migrate the old JSON backup / create a fresh sheet from local data.
+  async function initialDriveSync() {
+    setDriveStatus('syncing', 'Looking for your sheet…');
+    try {
+      if (!driveSync.sheetId) await findExistingSheet();
+
+      if (driveSync.sheetId) {
+        const byTab = await readSheet();
+        if (sheetHasData(byTab)) {
+          applySheetValues(byTab);
+          setDriveStatus('connected', 'Restored from your sheet');
+        } else {
+          await driveSyncNow();
+          setDriveStatus('connected', 'Sheet was empty — filled it from this device');
+        }
+      } else {
+        const migrated = await migrateLegacyJson();
+        await driveSyncNow();
+        setDriveStatus('connected', migrated ? 'Sheet created from your old JSON backup' : 'Sheet created');
+      }
+    } catch (e) {
+      setDriveStatus('error', e.message);
+    }
+  }
+
+  async function manualDriveSync() {
+    setDriveStatus('syncing');
+    try { await ensureToken(); await driveSyncNow(); }
+    catch (e) { setDriveStatus('error', e.message); }
+  }
+
+  // Pull the latest from the sheet (useful after editing it by hand)
+  async function pullFromSheet() {
+    if (!driveSync.sheetId) { alert('No sheet yet — sync once first.'); return; }
+    if (!confirm('Replace the data on this device with what is currently in the Google Sheet?')) return;
+    setDriveStatus('syncing', 'Reading sheet…');
+    try {
+      await ensureToken();
+      const byTab = await readSheet();
+      applySheetValues(byTab);
+      clearDirty();
+      setDriveStatus('connected', 'Pulled from sheet');
+    } catch (e) { setDriveStatus('error', e.message); }
+  }
+
+  // Called after every save — queues a sync if connected
+  let syncTimer = null;
+  function scheduleDriveSync() {
+    setDirty();
+    if (driveSync.status !== 'connected') return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(async () => {
+      try { await ensureToken(); await driveSyncNow(); }
+      catch (e) { setDriveStatus('error', e.message); }
+    }, 3000); // debounce — wait 3 s after last change
+  }
+
+  function autoSync() {
+    // Legacy no-op — sheet sync is triggered by scheduleDriveSync() on save
+  }
+
+  function renderStats() {
+    const total = entries.reduce((s, e) => s + e.price, 0);
+    const days  = new Set(entries.map(e => e.date)).size;
+    document.getElementById('statTotal').textContent = '$' + total.toFixed(2);
+    document.getElementById('statCount').textContent = entries.length;
+    document.getElementById('statDays').textContent  = days;
+
+    // Coffee streak — count consecutive days ending today
+    const uniqueDates = [...new Set(entries.map(e => e.date))].sort().reverse();
+    let streak = 0;
+    if (uniqueDates.length) {
+      const todayStr = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+      const yest = new Date(today); yest.setDate(yest.getDate() - 1);
+      const yestStr = `${yest.getFullYear()}-${pad(yest.getMonth()+1)}-${pad(yest.getDate())}`;
+      if (uniqueDates[0] === todayStr || uniqueDates[0] === yestStr) {
+        let check = new Date(uniqueDates[0]);
+        for (const d of uniqueDates) {
+          const dDate = new Date(d);
+          const diff  = Math.round((check - dDate) / 86400000);
+          if (diff === 0 || diff === 1) { streak++; check = dDate; }
+          else break;
+        }
+      }
+    }
+
+    const badge   = document.getElementById('coffeeStreakBadge');
+    const flameEl = document.getElementById('coffeeStreakFlame');
+    const textEl  = document.getElementById('coffeeStreakText');
+    if (streak >= 2) {
+      badge.style.display = 'block';
+      let lvl, emoji;
+      if      (streak < 4)  { lvl = 1; emoji = '🔥'; }
+      else if (streak < 7)  { lvl = 2; emoji = '🔥'; }
+      else if (streak < 14) { lvl = 3; emoji = '🔥🔥'; }
+      else if (streak < 30) { lvl = 4; emoji = '🔥🔥'; }
+      else                  { lvl = 5; emoji = '🔥🔥🔥'; }
+      flameEl.textContent = emoji;
+      flameEl.className   = `coffee-streak-flame cs-lvl-${lvl}`;
+      textEl.textContent  = `${streak}-day saving streak!`;
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  function changeMonth(delta) {
+    calMonth += delta;
+    if (calMonth > 11) { calMonth = 0;  calYear++; }
+    if (calMonth < 0)  { calMonth = 11; calYear--; }
+    renderCalendar();
+  }
+
+  function renderCalendar() {
+    document.getElementById('calTitle').textContent = MONTHS[calMonth] + ' ' + calYear;
+    const dayMap = {};
+    const prefix = `${calYear}-${String(calMonth+1).padStart(2,'0')}-`;
+    entries.forEach(e => {
+      if (e.date.startsWith(prefix)) { const d = parseInt(e.date.slice(8)); dayMap[d] = (dayMap[d]||0) + e.price; }
+    });
+    const firstDay = new Date(calYear, calMonth, 1).getDay();
+    const daysInMo = new Date(calYear, calMonth+1, 0).getDate();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const grid = document.getElementById('calGrid');
+    grid.innerHTML = '';
+    DAYS.forEach(d => { const el = document.createElement('div'); el.className = 'cal-day-name'; el.textContent = d; grid.appendChild(el); });
+    for (let i = 0; i < firstDay; i++) { const el = document.createElement('div'); el.className = 'cal-cell empty'; grid.appendChild(el); }
+    for (let d = 1; d <= daysInMo; d++) {
+      const el = document.createElement('div');
+      const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      el.className = 'cal-cell' + (dateStr === todayStr ? ' today' : '');
+      el.innerHTML = d;
+      if (dayMap[d]) {
+        el.classList.add('saved');
+        const dot = document.createElement('div'); dot.className = 'dot'; el.appendChild(dot);
+        const dayEntries = entries.filter(e => e.date === dateStr);
+        const names = dayEntries.map(e => e.place ? `${e.name} @ ${e.place}` : e.name).join(', ');
+        const tip = document.createElement('div'); tip.className = 'tooltip'; tip.textContent = `Saved $${dayMap[d].toFixed(2)} — ${names}`; el.appendChild(tip);
+      }
+      if (indulged.has(dateStr)) {
+        el.classList.add('indulged');
+        const cup = document.createElement('div'); cup.className = 'cup'; cup.textContent = '☕'; el.appendChild(cup);
+      }
+      el.addEventListener('click', () => toggleIndulged(dateStr));
+      grid.appendChild(el);
+    }
+  }
+
+  function renderLog() {
+    const list = document.getElementById('logList');
+    const skipped = entries.map(e => ({ ...e, kind: 'skipped' }));
+    const bought  = boughtEntries.map(e => ({ ...e, kind: 'bought' }));
+    const all     = [...skipped, ...bought].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+
+    if (!all.length) { list.innerHTML = '<div class="empty-state">Nothing logged yet — start above!</div>'; return; }
+
+    list.innerHTML = all.map(e => {
+      if (e.kind === 'skipped') return `
+        <div class="log-item">
+          <span class="icon">✅</span>
+          <div class="info">
+            <div class="name">${escHtml(e.name)}${e.place ? ` <span style="font-weight:400;color:var(--muted)">@ ${escHtml(e.place)}</span>` : ''}</div>
+            <div class="meta">${formatDateStr(e.date)} · Skipped</div>
+          </div>
+          <div class="price">+$${e.price.toFixed(2)}</div>
+          <button class="btn-danger" onclick="deleteEntry(${e.id})" title="Remove">✕</button>
+        </div>`;
+      else return `
+        <div class="log-item">
+          <span class="icon">☕</span>
+          <div class="info">
+            <div class="name">${escHtml(e.name)}${e.place ? ` <span style="font-weight:400;color:var(--muted)">@ ${escHtml(e.place)}</span>` : ''}</div>
+            <div class="meta">${formatDateStr(e.date)} · Bought</div>
+          </div>
+          <div style="min-width:3.5rem"></div>
+          <button class="btn-danger" onclick="deleteBoughtEntry(${e.id})" title="Remove">✕</button>
+        </div>`;
+    }).join('');
+  }
+
+  function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function formatDateStr(iso) {
+    const [y,m,d] = iso.split('-').map(Number);
+    return new Date(y, m-1, d).toLocaleDateString('en-US', { weekday:'short', year:'numeric', month:'short', day:'numeric' });
+  }
+
+  function render() { renderStats(); renderLog(); }
+
+
+  // ══════════════════════════════════════════════════════
+  //  INIT
+  // ══════════════════════════════════════════════════════
+  const pad = n => String(n).padStart(2,'0');
+  const todayStr = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+  document.getElementById('coffeeDate').value = todayStr;
+  document.getElementById('boughtDate').value  = todayStr;
+
+  // Restore saved Drive Client ID into the input field
+  const savedClientId = localStorage.getItem(DRIVE_CLIENTID_KEY);
+  if (savedClientId) {
+    const el = document.getElementById('driveClientId');
+    if (el) el.value = savedClientId;
+  }
+
+  // Boot Drive sync
+  loadDriveConfig();
+  if (driveSync.clientId) {
+    setDriveStatus(driveSync.accessToken ? 'connected' : 'off',
+      driveSync.lastSyncedAt ? 'Last sync: ' + new Date(driveSync.lastSyncedAt).toLocaleString() : '');
+    // Silently try to re-auth with cached token and sync if dirty
+    if (driveSync.accessToken) {
+      driveSync.initialSyncDone = true;
+      if (driveSync.dirty) scheduleDriveSync();
+    }
+  } else {
+    setDriveStatus('off');
+  }
+
+  setWeeklyQuote('coffee');
+  render();
+
+  // Show the daily welcome prompt (once per day)
+  setTimeout(showWelcomeModal, 600);
+
+
+
+
+
+
+
+  // ══════════════════════════════════════════════════════
+  //  WELCOME MODAL
+  // ══════════════════════════════════════════════════════
+  function showWelcomeModal() {
+    const key      = 'tracker_welcome_shown';
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (localStorage.getItem(key) === todayStr) return;
+    localStorage.setItem(key, todayStr);
+    document.getElementById('welcomeModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function dismissWelcome() {
+    document.getElementById('welcomeModal').classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  function welcomeAction(type) {
+    dismissWelcome();
+    if (type === 'skip') {
+      // Make sure coffee tab is active, then focus the skipped coffee name field
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-coffee').classList.add('active');
+      document.querySelectorAll('.tab-btn')[0].classList.add('active');
+      document.getElementById('headerLogo').textContent  = '☕';
+      document.getElementById('headerTitle').textContent = "Alia's Coffee Savings Tracker";
+      setWeeklyQuote('coffee');
+      setTimeout(() => {
+        const el = document.getElementById('coffeeName');
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.focus();
+      }, 150);
+    } else if (type === 'bought') {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-coffee').classList.add('active');
+      document.querySelectorAll('.tab-btn')[0].classList.add('active');
+      document.getElementById('headerLogo').textContent  = '☕';
+      document.getElementById('headerTitle').textContent = "Alia's Coffee Savings Tracker";
+      setWeeklyQuote('coffee');
+      setTimeout(() => {
+        const el = document.getElementById('boughtName');
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.focus();
+      }, 150);
+    }
+    // 'quiz' — open the decision quiz
+    if (type === 'quiz') {
+      setTimeout(openQuiz, 150);
+    }
+    // 'none' just closes
+  }
+
+  // ══════════════════════════════════════════════════════
+  //  "SHOULD I GET A DRINK?" QUIZ
+  // ══════════════════════════════════════════════════════
+  const QUIZ_STEPS = [
+    {
+      id: 'q1',
+      emoji: '🏠',
+      q: 'Did you already make coffee at home today?',
+      sub: 'Even a quick drip, instant, or cold brew from the fridge?',
+      choices: [
+        { icon: '✅', label: 'Yes, I made some', next: 'no-home' },
+        { icon: '❌', label: 'Nope, nothing yet', next: 'q2' },
+      ]
+    },
+    {
+      id: 'q2',
+      emoji: '💧',
+      q: 'Have you had water in the last hour?',
+      sub: 'Thirst and caffeine cravings feel identical in the brain.',
+      choices: [
+        { icon: '😬', label: "Honestly... not really", next: 'no-water' },
+        { icon: '💧', label: "Yes, I've been hydrated", next: 'q3' },
+      ]
+    },
+    {
+      id: 'q3',
+      emoji: '🕐',
+      q: 'What time is it right now?',
+      sub: 'Caffeine has a 5–6 hour half-life. It adds up.',
+      choices: [
+        { icon: '🌅', label: 'Before 2pm', next: 'q4' },
+        { icon: '🌆', label: 'After 2pm', next: 'no-time' },
+      ]
+    },
+    {
+      id: 'q4',
+      emoji: '📍',
+      q: 'Is there free coffee where you are right now?',
+      sub: 'At home, at work, in the break room — anywhere nearby?',
+      choices: [
+        { icon: '✅', label: 'Actually... yes there is', next: 'no-free' },
+        { icon: '❌', label: 'Nothing available', next: 'q5' },
+      ]
+    },
+    {
+      id: 'q5',
+      emoji: '🫀',
+      q: 'How many coffees have you had today already?',
+      sub: "Your heart's working hard enough.",
+      choices: [
+        { icon: '0️⃣', label: 'Zero — this would be my first', next: 'q6' },
+        { icon: '1️⃣', label: 'One so far', next: 'q6' },
+        { icon: '☕☕', label: 'Two or more', next: 'no-too-many' },
+      ]
+    },
+    {
+      id: 'q6',
+      emoji: '🧠',
+      q: 'Why do you want a coffee right now?',
+      sub: 'Deep breath. Be real with yourself.',
+      choices: [
+        { icon: '😑', label: "Honestly? I'm just bored", next: 'no-bored' },
+        { icon: '😴', label: "I'm genuinely tired and need it", next: 'q7' },
+        { icon: '☕', label: "I just love coffee — it's a treat", next: 'q7' },
+      ]
+    },
+    {
+      id: 'q7',
+      emoji: '🍽️',
+      q: 'Have you eaten something today?',
+      sub: 'Coffee on an empty stomach = anxiety and jitters.',
+      choices: [
+        { icon: '😬', label: "Not yet...", next: 'no-food' },
+        { icon: '✅', label: "Yes, I've eaten", next: 'q8' },
+      ]
+    },
+    {
+      id: 'q8',
+      emoji: '💸',
+      q: 'Will spending $5–7 bother you later today?',
+      sub: "No judgment — just being honest with yourself.",
+      choices: [
+        { icon: '😬', label: 'Yeah, probably a little', next: 'no-money' },
+        { icon: '😌', label: "Nah, I'm financially fine today", next: 'q9' },
+      ]
+    },
+    {
+      id: 'q9',
+      emoji: '⚖️',
+      q: "Last one: will this coffee make your day meaningfully better?",
+      sub: "Not just 'fine'. Actually better.",
+      choices: [
+        { icon: '🤷', label: "It'd be fine I guess", next: 'no-final' },
+        { icon: '✨', label: 'Yes, I genuinely want this one', next: 'yes-go' },
+      ]
+    },
+  ];
+
+  const QUIZ_RESULTS = {
+    'no-home': {
+      emoji: '🏡',
+      title: 'You literally already have coffee.',
+      sub: "Go drink the one you made! It's sitting there waiting, probably still warm, definitely free. That's the whole move.",
+      type: 'no',
+    },
+    'no-water': {
+      emoji: '💧',
+      title: 'Drink some water first.',
+      sub: "Dehydration feels exactly like a caffeine craving. Drink a full glass, wait 10 minutes, then see if you still want the coffee.",
+      type: 'no',
+    },
+    'no-time': {
+      emoji: '🌙',
+      title: "It's too late in the day.",
+      sub: "Caffeine at this hour will still be in your system past midnight. Your sleep is worth way more than that latte. Future Alia thanks you.",
+      type: 'no',
+    },
+    'no-free': {
+      emoji: '🆓',
+      title: "There's free coffee RIGHT THERE.",
+      sub: "You were about to pay money for something you already have access to. Go get the free one. That's the win.",
+      type: 'no',
+    },
+    'no-too-many': {
+      emoji: '🫀',
+      title: "Your heart is doing its best.",
+      sub: "Two coffees is plenty for one human. Your nervous system is not a performance that needs an encore. Drink some water.",
+      type: 'no',
+    },
+    'no-bored': {
+      emoji: '🚶',
+      title: "Boredom is not a coffee emergency.",
+      sub: "Take a 5-minute walk, text a friend, step outside for a sec. The craving will pass in like 10 minutes. It always does.",
+      type: 'no',
+    },
+    'no-food': {
+      emoji: '🍌',
+      title: "Eat something first!",
+      sub: "Coffee on an empty stomach will make you jittery and anxious and you'll regret it. Have a snack, then revisit the coffee question.",
+      type: 'no',
+    },
+    'no-money': {
+      emoji: '💰',
+      title: "Skip it. Your future self is already grateful.",
+      sub: "If it'll bother you later, that little guilt isn't worth $6. Log the skip, add it to your savings, feel great about it.",
+      type: 'no',
+      showLogSkip: true,
+    },
+    'no-final': {
+      emoji: '🏆',
+      title: "You don't even really want it.",
+      sub: "A 'fine' coffee isn't worth $6 and a line. Save the money for something that'll actually make you happy.",
+      type: 'no',
+      showLogSkip: true,
+    },
+    'yes-go': {
+      emoji: '✨',
+      title: "Okay! Go get that coffee.",
+      sub: "You passed every single check. You've genuinely earned this one. Drink every single drop with zero guilt. But you have to log it! 😄",
+      type: 'yes',
+    },
+  };
+
+  let quizStepHistory = [];
+  let quizCurrentStep = null;
+
+  function openQuiz() {
+    quizStepHistory = [];
+    quizCurrentStep = null;
+    document.getElementById('quizModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+    renderQuizStep('q1');
+  }
+
+  function closeQuiz() {
+    document.getElementById('quizModal').classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  function quizBack() {
+    if (quizStepHistory.length === 0) { closeQuiz(); return; }
+    const prev = quizStepHistory.pop();
+    quizCurrentStep = null;
+    renderQuizStep(prev, false);
+  }
+
+  function renderQuizStep(stepId, pushHistory) {
+    if (pushHistory !== false && quizCurrentStep) quizStepHistory.push(quizCurrentStep);
+    quizCurrentStep = stepId;
+
+    // Special final confirmation screen
+    if (stepId === 'yes-go') { renderQuizYesConfirm(); return; }
+    if (stepId === 'yes-changed-mind') { renderQuizChangedMind(); return; }
+
+    // Is it a result?
+    const result = QUIZ_RESULTS[stepId];
+    if (result) { renderQuizResult(result); return; }
+
+    const step = QUIZ_STEPS.find(s => s.id === stepId);
+    if (!step) return;
+
+    const currentIdx = QUIZ_STEPS.findIndex(s => s.id === stepId);
+    const dots = QUIZ_STEPS.map((s, i) => {
+      const cls = i < currentIdx ? 'done' : i === currentIdx ? 'current' : '';
+      return `<div class="quiz-progress-dot ${cls}"></div>`;
+    }).join('');
+
+    const choices = step.choices.map(c => `
+      <button class="quiz-choice" onclick="renderQuizStep('${c.next}')">
+        <span class="qc-icon">${c.icon}</span>
+        ${c.label}
+      </button>
+    `).join('');
+
+    const backBtn = quizStepHistory.length > 0
+      ? `<button class="quiz-back-btn" onclick="quizBack()">← back</button>`
+      : '';
+
+    document.getElementById('quizInner').innerHTML = `
+      <button class="quiz-close-x" onclick="closeQuiz()">×</button>
+      ${backBtn}
+      <div class="quiz-progress">${dots}</div>
+      <div class="quiz-q-emoji">${step.emoji}</div>
+      <div class="quiz-q-text">${step.q}</div>
+      <div class="quiz-q-sub">${step.sub}</div>
+      <div class="quiz-choices">${choices}</div>
+    `;
+  }
+
+  function renderQuizResult(result) {
+    const isNo = result.type === 'no';
+
+    let extraBtn = '';
+    if (result.showLogSkip) {
+      extraBtn = `<button class="quiz-result-btn secondary" onclick="closeQuiz(); welcomeAction('skip')">Log this as a skipped coffee ✅</button>`;
+    } else if (isNo) {
+      extraBtn = `<button class="quiz-result-btn secondary" onclick="closeQuiz(); welcomeAction('skip')">Log a skipped coffee ✅</button>`;
+    } else {
+      extraBtn = `<button class="quiz-result-btn secondary" onclick="closeQuiz(); welcomeAction('bought')">Log this coffee ☕</button>`;
+    }
+
+    document.getElementById('quizInner').innerHTML = `
+      <button class="quiz-close-x" onclick="closeQuiz()">×</button>
+      <div class="quiz-result">
+        <div class="quiz-result-emoji">${result.emoji}</div>
+        <div class="quiz-result-title">${result.title}</div>
+        <div class="quiz-result-sub">${result.sub}</div>
+        <div class="quiz-result-btns">
+          <button class="quiz-result-btn primary" onclick="closeQuiz()">
+            ${isNo ? "Got it, skipping the coffee ✊" : "Let's go get it! ☕"}
+          </button>
+          ${extraBtn}
+          <button class="quiz-result-btn secondary" onclick="renderQuizStep('q1', false); quizStepHistory = [];">Start over</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderQuizYesConfirm() {
+    // Pull live savings total from entries
+    const total   = entries.reduce((s, e) => s + e.price, 0);
+    const totalFmt = '$' + total.toFixed(2);
+
+    document.getElementById('quizInner').innerHTML = `
+      <button class="quiz-close-x" onclick="closeQuiz()">×</button>
+      <div class="quiz-result">
+        <div class="quiz-result-emoji">👀</div>
+        <div class="quiz-result-title">You've already saved ${totalFmt}.</div>
+        <div class="quiz-result-sub">
+          You passed the quiz, so this one's technically earned —
+          but just so you know what you're working with. Still want to go for it?
+        </div>
+        <div class="quiz-result-btns">
+          <button class="quiz-result-btn primary" onclick="renderQuizLogAndGo()">
+            Yes — log it &amp; go get it ☕
+          </button>
+          <button class="quiz-result-btn secondary" onclick="renderQuizStep('yes-changed-mind')">
+            Actually... I'll skip it 💪
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderQuizLogAndGo() {
+    document.getElementById('quizInner').innerHTML = `
+      <button class="quiz-close-x" onclick="closeQuiz()">×</button>
+      <div class="quiz-result">
+        <div class="quiz-result-emoji">📝</div>
+        <div class="quiz-result-title">Log it first, then go get it.</div>
+        <div class="quiz-result-sub">
+          Pop the coffee into your log before you head out — that way the record is honest
+          and you can enjoy every sip guilt-free. You earned this one!
+        </div>
+        <div class="quiz-result-btns">
+          <button class="quiz-result-btn primary" onclick="closeQuiz(); welcomeAction('bought')">
+            Log it as a bought coffee ☕
+          </button>
+          <button class="quiz-result-btn secondary" onclick="closeQuiz()">
+            I'll log it when I'm back
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderQuizChangedMind() {
+    document.getElementById('quizInner').innerHTML = `
+      <button class="quiz-close-x" onclick="closeQuiz()">×</button>
+      <div class="quiz-result">
+        <div class="quiz-result-emoji">🏆</div>
+        <div class="quiz-result-title">Last-second save. That's the best kind.</div>
+        <div class="quiz-result-sub">
+          You made it all the way to the end and still said no. Honestly? That's impressive.
+          Log the skip — you absolutely earned it.
+        </div>
+        <div class="quiz-result-btns">
+          <button class="quiz-result-btn primary" onclick="closeQuiz(); welcomeAction('skip')">
+            Log this as a skip ✅
+          </button>
+          <button class="quiz-result-btn secondary" onclick="closeQuiz()">
+            Close
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // ── Version display ───────────────────────────────────────────────
+  // Always visible in the footer so you can confirm which build is live.
+  // Tapping it forces a fresh check for a newer upload.
+  (function showVersion() {
+    const el = document.getElementById('appVersion');
+    if (!el) return;
+    el.textContent = 'v' + APP_VERSION;
+    let updateReady = false, checking = false;
+    el.addEventListener('click', async () => {
+      if (updateReady) { location.reload(); return; }
+      if (checking) return;
+      checking = true;
+      const original = 'v' + APP_VERSION;
+      el.textContent = 'checking…';
+      try {
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg) await reg.update();
+        }
+        const res = await fetch('./index.html', { cache: 'reload' });
+        const txt = await res.text();
+        const m = txt.match(/const APP_VERSION = '([^']+)'/);
+        if (m && m[1] !== APP_VERSION) {
+          updateReady = true;
+          el.textContent = 'v' + m[1] + ' available — tap to reload';
+        } else {
+          el.textContent = original + ' — up to date';
+          setTimeout(() => { if (!updateReady) el.textContent = original; }, 2500);
+        }
+      } catch (e) {
+        el.textContent = original + ' — offline';
+        setTimeout(() => { if (!updateReady) el.textContent = original; }, 2500);
+      }
+      checking = false;
+    });
+  })();
+
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     PWA: SERVICE WORKER + INSTALL PROMPT
+     Registering sw.js is what makes the app installable and offline.
+     It never touches Google auth or Drive traffic.
+════════════════════════════════════════════════════════════════════ -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .catch(err => console.warn('[Tracker] SW registration failed:', err));
+  });
+}
+
+// Chrome fires this instead of showing its own install banner.
+// We stash it and show a friendlier button.
+let deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  showInstallButton();
+});
+
+function showInstallButton() {
+  if (document.getElementById('installBtn')) return;
+  const host = document.querySelector('.header-title-row') || document.querySelector('header') || document.body;
+  const btn = document.createElement('button');
+  btn.id = 'installBtn';
+  btn.textContent = '⬇ Install App';
+  btn.style.cssText = 'margin-top:6px; padding:5px 12px; font-size:12px; font-weight:700; font-family:inherit; color:var(--brown-mid); background:var(--cream-dark); border:1px solid var(--brown-light); border-radius:8px; cursor:pointer; display:block;';
+  btn.onclick = triggerInstall;
+  host.appendChild(btn);
+}
+
+async function triggerInstall() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  try { await deferredInstallPrompt.userChoice; } catch (e) {}
+  deferredInstallPrompt = null;
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.remove();
+}
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.remove();
+});
+</script>
+</body>
+</html>
