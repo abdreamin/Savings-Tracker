@@ -554,6 +554,195 @@
     .btn-quiz-trigger .qt-label { font-size: 1rem; font-weight: 800; color: #7a4010; display: block; }
     .btn-quiz-trigger .qt-sub   { font-size: .78rem; color: #b06030; margin-top: 2px; display: block; }
     .btn-quiz-trigger .qt-arrow { font-size: 1.2rem; color: #e8a020; flex-shrink: 0; }
+
+    /* ── Savings Goal ── */
+    .goal-card {
+      position: relative;
+      z-index: 1;
+      background: linear-gradient(135deg, rgba(255,255,255,.82) 0%, rgba(255,240,248,.82) 100%);
+      border: 1.5px solid var(--cream-dark);
+      border-radius: 16px;
+      padding: 1rem 1.2rem;
+      margin: .75rem 0;
+      backdrop-filter: blur(6px);
+    }
+    .goal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: .55rem;
+    }
+    .goal-name {
+      font-weight: 700;
+      font-size: .95rem;
+      color: var(--brown-dark);
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+    .goal-amounts {
+      font-size: .82rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .goal-bar-track {
+      height: 10px;
+      background: var(--cream-dark);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .goal-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #c8849e, #7d4560);
+      border-radius: 99px;
+      transition: width .6s cubic-bezier(.4,0,.2,1);
+      min-width: 4px;
+    }
+    .goal-pct {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-top: .35rem;
+      text-align: right;
+    }
+    .goal-edit-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: .8rem;
+      color: var(--muted);
+      padding: .1rem .3rem;
+      border-radius: 6px;
+      transition: background .15s;
+    }
+    .goal-edit-btn:hover { background: var(--cream-dark); }
+    .goal-set-prompt {
+      text-align: center;
+      color: var(--muted);
+      font-size: .88rem;
+      padding: .2rem 0;
+    }
+    .goal-set-prompt button {
+      background: none;
+      border: 1.5px dashed var(--brown-light);
+      border-radius: 10px;
+      padding: .5rem 1.2rem;
+      color: var(--brown-mid);
+      font-weight: 600;
+      cursor: pointer;
+      font-size: .88rem;
+      width: 100%;
+      transition: background .15s;
+    }
+    .goal-set-prompt button:hover { background: var(--cream-dark); }
+    .goal-editor {
+      display: none;
+      flex-direction: column;
+      gap: .55rem;
+      margin-top: .6rem;
+    }
+    .goal-editor.open { display: flex; }
+    .goal-editor input {
+      border: 1.5px solid var(--cream-dark);
+      border-radius: 10px;
+      padding: .5rem .8rem;
+      font-size: .9rem;
+      color: var(--text);
+      background: #fff;
+      outline: none;
+    }
+    .goal-editor input:focus { border-color: var(--brown-mid); }
+    .goal-editor-row { display: flex; gap: .5rem; }
+    .goal-save-btn {
+      flex: 1;
+      background: linear-gradient(135deg, var(--brown-mid), var(--brown-dark));
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: .5rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: .88rem;
+    }
+    .goal-cancel-btn {
+      background: var(--cream-dark);
+      color: var(--muted);
+      border: none;
+      border-radius: 10px;
+      padding: .5rem .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: .88rem;
+    }
+
+    /* ── Milestone celebration modal ── */
+    .milestone-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9000;
+      align-items: center;
+      justify-content: center;
+      background: rgba(74,37,53,.45);
+      backdrop-filter: blur(4px);
+    }
+    .milestone-backdrop.show { display: flex; }
+    .milestone-modal {
+      background: linear-gradient(135deg, #fff 0%, #fdf0f6 100%);
+      border-radius: 24px;
+      padding: 2.2rem 2rem 1.8rem;
+      max-width: 320px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 24px 64px rgba(74,37,53,.3);
+      animation: milePop .45s cubic-bezier(.34,1.56,.64,1) both;
+      position: relative;
+      overflow: hidden;
+    }
+    @keyframes milePop {
+      from { transform: scale(.7) translateY(30px); opacity: 0; }
+      to   { transform: scale(1) translateY(0);    opacity: 1; }
+    }
+    .mile-emoji { font-size: 3.2rem; margin-bottom: .5rem; display: block; }
+    .mile-amount {
+      font-size: 2.2rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #7d4560, #c8849e);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.1;
+      margin-bottom: .35rem;
+    }
+    .mile-title { font-size: 1.15rem; font-weight: 800; color: var(--brown-dark); margin-bottom: .5rem; }
+    .mile-sub   { font-size: .88rem; color: var(--muted); line-height: 1.5; margin-bottom: 1.3rem; }
+    .mile-close {
+      background: linear-gradient(135deg, var(--brown-mid), var(--brown-dark));
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: .75rem 2rem;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    /* ── Confetti ── */
+    .confetti-piece {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 8999;
+      animation: confettiFall linear forwards;
+    }
+    @keyframes confettiFall {
+      0%   { transform: translateY(-20px) rotate(0deg);   opacity: 1; }
+      80%  { opacity: 1; }
+      100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
   </style>
 </head>
 <body>
@@ -588,6 +777,18 @@
         <div class="amount" id="statDays">0</div>
         <div class="label">Days with Savings</div>
       </div>
+      <div class="stat">
+        <div class="amount" id="statNoBought">0</div>
+        <div class="label">Days Without Buying</div>
+      </div>
+    </div>
+
+    <!-- No-buy streak badge -->
+    <div id="noBuyStreakBadge" style="display:none; text-align:center; margin-bottom:.5rem;">
+      <div class="coffee-streak-badge" style="background:linear-gradient(135deg,#e8f5e9,#c8e6c9); border:1.5px solid #a5d6a7;">
+        <span id="noBuyStreakFlame" style="font-size:1.3rem;">🚫☕</span>
+        <span id="noBuyStreakText" style="color:#2e7d32; font-weight:700; font-size:.9rem;"></span>
+      </div>
     </div>
 
     <!-- Coffee streak badge -->
@@ -595,6 +796,21 @@
       <div class="coffee-streak-badge">
         <span class="coffee-streak-flame" id="coffeeStreakFlame"></span>
         <span id="coffeeStreakText"></span>
+      </div>
+    </div>
+
+    <!-- Savings goal -->
+    <div class="goal-card" id="goalCard">
+      <div id="goalDisplay">
+        <!-- filled by renderGoal() -->
+      </div>
+      <div class="goal-editor" id="goalEditor">
+        <input type="text" id="goalNameInput" placeholder="What are you saving for? e.g. Japan trip ✈️" maxlength="60" />
+        <div class="goal-editor-row">
+          <input type="number" id="goalAmountInput" placeholder="Goal amount e.g. 800" min="1" step="1" style="flex:1" />
+          <button class="goal-save-btn" onclick="saveGoal()">Set Goal</button>
+          <button class="goal-cancel-btn" onclick="closeGoalEditor()">✕</button>
+        </div>
       </div>
     </div>
 
@@ -709,6 +925,17 @@
 
 </div>
 
+<!-- ═══════════════════════ MILESTONE MODAL ═══════════════════════ -->
+<div class="milestone-backdrop" id="milestoneModal" onclick="if(event.target===this)closeMilestone()">
+  <div class="milestone-modal">
+    <span class="mile-emoji" id="mileEmoji">🎉</span>
+    <div class="mile-amount" id="mileAmount"></div>
+    <div class="mile-title" id="mileTitle"></div>
+    <div class="mile-sub"   id="mileSub"></div>
+    <button class="mile-close" onclick="closeMilestone()">Keep saving! ✨</button>
+  </div>
+</div>
+
 <!-- ═══════════════════════ WELCOME MODAL ═══════════════════════ -->
 <div class="welcome-modal-backdrop" id="welcomeModal" onclick="if(event.target===this)dismissWelcome()">
   <div class="welcome-modal">
@@ -763,7 +990,7 @@
 
 <script>
   // Bump whenever the file changes so you can confirm which build is live.
-  const APP_VERSION = '2026.08.17f';
+  const APP_VERSION = '2026.08.17h';
 
   // ══════════════════════════════════════════════════════
   //  TAB SWITCHING
@@ -886,8 +1113,11 @@
     if (!name)              { alert('Please enter a coffee name.'); return; }
     if (isNaN(price)||price<=0) { alert('Please enter a valid price.'); return; }
     if (!date)              { alert('Please select a date.'); return; }
+    const oldTotal = entries.reduce((s, e) => s + e.price, 0);
     entries.unshift({ id: Date.now(), name, place, price, date });
     save(); render(); scheduleDriveSync();
+    const newTotal = entries.reduce((s, e) => s + e.price, 0);
+    checkMilestones(oldTotal, newTotal);
     document.getElementById('coffeeName').value  = '';
     document.getElementById('coffeePlace').value = '';
     document.getElementById('coffeePrice').value = '';
@@ -1383,6 +1613,35 @@
     } else {
       badge.style.display = 'none';
     }
+
+    // ── Days without buying ──────────────────────────────
+    const boughtDates = new Set(boughtEntries.map(e => e.date));
+    let noBuyStreak = 0;
+    const checkDay = new Date(today);
+    while (true) {
+      const ds = `${checkDay.getFullYear()}-${pad(checkDay.getMonth()+1)}-${pad(checkDay.getDate())}`;
+      if (boughtDates.has(ds)) break;
+      noBuyStreak++;
+      if (noBuyStreak > 3650) break; // safety cap
+      checkDay.setDate(checkDay.getDate() - 1);
+    }
+    const noBuyEl = document.getElementById('statNoBought');
+    if (noBuyEl) noBuyEl.textContent = noBuyStreak;
+
+    const noBuyBadge = document.getElementById('noBuyStreakBadge');
+    const noBuyText  = document.getElementById('noBuyStreakText');
+    if (noBuyBadge && noBuyText) {
+      if (noBuyStreak >= 7) {
+        let msg;
+        if      (noBuyStreak >= 30) msg = `${noBuyStreak} days coffee-free! 🏆`;
+        else if (noBuyStreak >= 14) msg = `${noBuyStreak} days without buying — incredible!`;
+        else                        msg = `${noBuyStreak} days without buying — keep it up!`;
+        noBuyText.textContent    = msg;
+        noBuyBadge.style.display = 'block';
+      } else {
+        noBuyBadge.style.display = 'none';
+      }
+    }
   }
 
   const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -1468,7 +1727,135 @@
     return new Date(y, m-1, d).toLocaleDateString('en-US', { weekday:'short', year:'numeric', month:'short', day:'numeric' });
   }
 
-  function render() { renderStats(); renderLog(); }
+  function render() { renderStats(); renderLog(); renderGoal(); }
+
+  // ══════════════════════════════════════════════════════
+  //  SAVINGS GOAL
+  // ══════════════════════════════════════════════════════
+  const GOAL_NAME_KEY   = 'coffeeGoalName';
+  const GOAL_AMOUNT_KEY = 'coffeeGoalAmount';
+
+  function getGoal() {
+    const name   = localStorage.getItem(GOAL_NAME_KEY)   || '';
+    const amount = parseFloat(localStorage.getItem(GOAL_AMOUNT_KEY) || '0');
+    return { name, amount };
+  }
+
+  function saveGoal() {
+    const name   = document.getElementById('goalNameInput').value.trim();
+    const amount = parseFloat(document.getElementById('goalAmountInput').value);
+    if (!name)          { alert('Give your goal a name!'); return; }
+    if (!amount || amount <= 0) { alert('Enter a goal amount greater than $0.'); return; }
+    localStorage.setItem(GOAL_NAME_KEY,   name);
+    localStorage.setItem(GOAL_AMOUNT_KEY, String(amount));
+    closeGoalEditor();
+    renderGoal();
+  }
+
+  function openGoalEditor() {
+    const { name, amount } = getGoal();
+    document.getElementById('goalNameInput').value   = name;
+    document.getElementById('goalAmountInput').value = amount || '';
+    document.getElementById('goalEditor').classList.add('open');
+  }
+
+  function closeGoalEditor() {
+    document.getElementById('goalEditor').classList.remove('open');
+  }
+
+  function renderGoal() {
+    const { name, amount } = getGoal();
+    const total   = entries.reduce((s, e) => s + e.price, 0);
+    const display = document.getElementById('goalDisplay');
+    if (!display) return;
+
+    if (!name || !amount) {
+      display.innerHTML = `
+        <div class="goal-set-prompt">
+          <button onclick="openGoalEditor()">🎯 Set a savings goal</button>
+        </div>`;
+      return;
+    }
+
+    const pct     = Math.min(100, (total / amount) * 100);
+    const reached = total >= amount;
+    display.innerHTML = `
+      <div class="goal-header">
+        <div class="goal-name">🎯 ${escHtml(name)}</div>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <div class="goal-amounts">$${total.toFixed(2)} / $${amount.toFixed(2)}</div>
+          <button class="goal-edit-btn" onclick="openGoalEditor()" title="Edit goal">✏️</button>
+        </div>
+      </div>
+      <div class="goal-bar-track">
+        <div class="goal-bar-fill" style="width:${pct.toFixed(1)}%"></div>
+      </div>
+      <div class="goal-pct">${reached ? '🎉 Goal reached!' : pct.toFixed(0) + '% there'}</div>`;
+  }
+
+  // ══════════════════════════════════════════════════════
+  //  MILESTONE CELEBRATIONS
+  // ══════════════════════════════════════════════════════
+  const MILESTONES_KEY = 'coffeeMilestonesReached';
+  const MILESTONES = [
+    { amount: 25,   emoji: '⭐',  title: 'First milestone!',       sub: "Twenty-five dollars saved. You're already proving this works." },
+    { amount: 50,   emoji: '🌟',  title: 'Fifty dollars!',         sub: "That's a nice dinner out — or more savings. You decide." },
+    { amount: 100,  emoji: '💯',  title: 'One hundred dollars!',   sub: "Triple digits. This is very real now." },
+    { amount: 200,  emoji: '🚀',  title: 'Two hundred dollars!',   sub: "You're flying. Whatever you're saving for is getting closer." },
+    { amount: 500,  emoji: '👑',  title: 'Five hundred dollars!',  sub: "FIVE HUNDRED. You have serious willpower, Alia. Seriously." },
+    { amount: 1000, emoji: '🏆',  title: 'ONE THOUSAND DOLLARS!',  sub: "An absolute legend. This is incredible. Treat yourself to something amazing." },
+  ];
+
+  function getReachedMilestones() {
+    try { return new Set(JSON.parse(localStorage.getItem(MILESTONES_KEY) || '[]')); }
+    catch (e) { return new Set(); }
+  }
+
+  function checkMilestones(oldTotal, newTotal) {
+    const reached = getReachedMilestones();
+    for (const m of MILESTONES) {
+      if (!reached.has(m.amount) && oldTotal < m.amount && newTotal >= m.amount) {
+        reached.add(m.amount);
+        localStorage.setItem(MILESTONES_KEY, JSON.stringify([...reached]));
+        setTimeout(() => showMilestone(m), 400);
+        break; // show one at a time
+      }
+    }
+  }
+
+  function showMilestone(m) {
+    document.getElementById('mileEmoji').textContent   = m.emoji;
+    document.getElementById('mileAmount').textContent  = '$' + m.amount.toLocaleString();
+    document.getElementById('mileTitle').textContent   = m.title;
+    document.getElementById('mileSub').textContent     = m.sub;
+    document.getElementById('milestoneModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+    launchConfetti();
+  }
+
+  function closeMilestone() {
+    document.getElementById('milestoneModal').classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  function launchConfetti() {
+    const colors = ['#7d4560','#c8849e','#f9a825','#4caf50','#e53935','#2196f3','#ff9800','#9c27b0'];
+    const count  = 80;
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement('div');
+      el.className = 'confetti-piece';
+      el.style.left            = Math.random() * 100 + 'vw';
+      el.style.top             = '-12px';
+      el.style.background      = colors[Math.floor(Math.random() * colors.length)];
+      el.style.width           = (8 + Math.random() * 8) + 'px';
+      el.style.height          = (8 + Math.random() * 8) + 'px';
+      el.style.borderRadius    = Math.random() > .5 ? '50%' : '2px';
+      el.style.animationDuration  = (1.5 + Math.random() * 2) + 's';
+      el.style.animationDelay     = (Math.random() * .8) + 's';
+      document.body.appendChild(el);
+      el.addEventListener('animationend', () => el.remove());
+    }
+  }
 
 
   // ══════════════════════════════════════════════════════
