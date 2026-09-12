@@ -990,7 +990,7 @@
 
 <script>
   // Bump whenever the file changes so you can confirm which build is live.
-  const APP_VERSION = '2026.08.17h';
+  const APP_VERSION = '2026.09.12a';
 
   // ══════════════════════════════════════════════════════
   //  TAB SWITCHING
@@ -1401,12 +1401,32 @@
     return TAB_LIST.some(t => (byTab[t] || []).length > 0);
   }
 
+  function clearSheetId() {
+    driveSync.sheetId = null;
+    localStorage.removeItem(SHEET_ID_KEY);
+  }
+
   async function driveSyncNow() {
-    if (!driveSync.sheetId) {
-      await createSheet();
+    // If we have a stored sheet ID, verify it still exists first
+    if (driveSync.sheetId) {
+      try {
+        await ensureSheetTabs();
+      } catch (e) {
+        // Sheet was deleted or inaccessible — clear the stale ID and create a new one
+        if (e.message && (e.message.includes('not found') || e.message.includes('Not Found') || e.message.includes('404'))) {
+          clearSheetId();
+          const found = await findExistingSheet();
+          if (!found) await createSheet();
+        } else {
+          throw e;
+        }
+      }
     } else {
-      await ensureSheetTabs();
+      // No sheet yet — try to find an existing one, else create fresh
+      const found = await findExistingSheet();
+      if (!found) await createSheet();
     }
+
     const values = buildSheetValues();
     assertDataValid(values);
     const data = TAB_LIST.map(tab => ({
@@ -1517,13 +1537,23 @@
       if (!driveSync.sheetId) await findExistingSheet();
 
       if (driveSync.sheetId) {
-        const byTab = await readSheet();
-        if (sheetHasData(byTab)) {
+        let byTab;
+        try {
+          byTab = await readSheet();
+        } catch (e) {
+          // Stale ID — search Drive for the real sheet
+          if (e.message && (e.message.includes('not found') || e.message.includes('Not Found') || e.message.includes('404'))) {
+            clearSheetId();
+            const found = await findExistingSheet();
+            if (found) { byTab = await readSheet(); }
+          } else { throw e; }
+        }
+        if (byTab && sheetHasData(byTab)) {
           applySheetValues(byTab);
           setDriveStatus('connected', 'Restored from your sheet');
         } else {
           await driveSyncNow();
-          setDriveStatus('connected', 'Sheet was empty — filled it from this device');
+          setDriveStatus('connected', byTab ? 'Sheet was empty — filled it from this device' : 'Sheet created');
         }
       } else {
         const migrated = await migrateLegacyJson();
