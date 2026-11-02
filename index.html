@@ -326,11 +326,15 @@
     .cal-cell.today { outline: 2px solid var(--brown-light); }
     .cal-cell.saved { background: var(--green-light); color: var(--green); }
     .cal-cell.saved .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-top: 2px; }
-    .cal-cell:not(.empty) { cursor: pointer; }
+    /* .cal-cell:not(.empty) { cursor: pointer; } — no longer clickable */
     .cal-cell:not(.empty):hover { opacity: .8; }
     .cal-cell.indulged { background: #fff3e0; color: #bf6c00; }
     .cal-cell.indulged .cup { font-size: .75rem; line-height: 1; margin-top: 1px; }
     .cal-cell.saved.indulged { background: linear-gradient(135deg, var(--green-light) 50%, #fff3e0 50%); }
+    .cal-cell.bought { background: #fce4ec; color: #c62828; }
+    .cal-cell.bought .cup { font-size: .75rem; line-height: 1; margin-top: 1px; }
+    .cal-cell.saved.bought { background: linear-gradient(135deg, var(--green-light) 50%, #fce4ec 50%); }
+    .cal-cell:not(.empty) { cursor: default; }
     .cal-legend { display: flex; gap: 1.2rem; margin-top: .9rem; font-size: .75rem; color: var(--muted); flex-wrap: wrap; }
     .cal-legend span { display: flex; align-items: center; gap: .35rem; }
     .legend-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); display: inline-block; }
@@ -919,6 +923,20 @@
       </details>
     </div>
 
+    <!-- Monthly calendar -->
+    <div class="card">
+      <h2>📅 Monthly View</h2>
+      <p style="font-size:.78rem; color:var(--muted); margin-bottom:.75rem;">
+        🟢 Green = day you saved &nbsp;·&nbsp; 🩷 Pink = day you bought
+      </p>
+      <div class="cal-nav">
+        <button onclick="changeMonth(-1)">‹</button>
+        <span class="cal-title" id="calTitle"></span>
+        <button onclick="changeMonth(1)">›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+
     <!-- Combined coffee log -->
     <div class="card">
       <h2>📋 Coffee Log</h2>
@@ -994,7 +1012,7 @@
 
 <script>
   // Bump whenever the file changes so you can confirm which build is live.
-  const APP_VERSION = '2026.11.02a';
+  const APP_VERSION = '2026.11.02b';
 
   // ══════════════════════════════════════════════════════
   //  TAB SWITCHING
@@ -1734,16 +1752,26 @@
   }
 
   function renderCalendar() {
-    document.getElementById('calTitle').textContent = MONTHS[calMonth] + ' ' + calYear;
-    const dayMap = {};
+    const titleEl = document.getElementById('calTitle');
+    const grid    = document.getElementById('calGrid');
+    if (!titleEl || !grid) return; // elements not in DOM yet
+    titleEl.textContent = MONTHS[calMonth] + ' ' + calYear;
+
+    // Build day maps
     const prefix = `${calYear}-${String(calMonth+1).padStart(2,'0')}-`;
+    const savedMap  = {}; // day → total saved
+    const boughtSet = new Set(); // days with a bought coffee
     entries.forEach(e => {
-      if (e.date.startsWith(prefix)) { const d = parseInt(e.date.slice(8)); dayMap[d] = (dayMap[d]||0) + e.price; }
+      if (e.date.startsWith(prefix)) { const d = parseInt(e.date.slice(8)); savedMap[d] = (savedMap[d]||0) + e.price; }
     });
+    boughtEntries.forEach(e => {
+      if (e.date.startsWith(prefix)) boughtSet.add(parseInt(e.date.slice(8)));
+    });
+
     const firstDay = new Date(calYear, calMonth, 1).getDay();
     const daysInMo = new Date(calYear, calMonth+1, 0).getDate();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-    const grid = document.getElementById('calGrid');
+
     grid.innerHTML = '';
     DAYS.forEach(d => { const el = document.createElement('div'); el.className = 'cal-day-name'; el.textContent = d; grid.appendChild(el); });
     for (let i = 0; i < firstDay; i++) { const el = document.createElement('div'); el.className = 'cal-cell empty'; grid.appendChild(el); }
@@ -1752,18 +1780,17 @@
       const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       el.className = 'cal-cell' + (dateStr === todayStr ? ' today' : '');
       el.innerHTML = d;
-      if (dayMap[d]) {
+      if (savedMap[d]) {
         el.classList.add('saved');
         const dot = document.createElement('div'); dot.className = 'dot'; el.appendChild(dot);
         const dayEntries = entries.filter(e => e.date === dateStr);
         const names = dayEntries.map(e => e.place ? `${e.name} @ ${e.place}` : e.name).join(', ');
-        const tip = document.createElement('div'); tip.className = 'tooltip'; tip.textContent = `Saved $${dayMap[d].toFixed(2)} — ${names}`; el.appendChild(tip);
+        const tip = document.createElement('div'); tip.className = 'tooltip'; tip.textContent = `Saved $${savedMap[d].toFixed(2)} — ${names}`; el.appendChild(tip);
       }
-      if (indulged.has(dateStr)) {
-        el.classList.add('indulged');
+      if (boughtSet.has(d)) {
+        el.classList.add('bought');
         const cup = document.createElement('div'); cup.className = 'cup'; cup.textContent = '☕'; el.appendChild(cup);
       }
-      el.addEventListener('click', () => toggleIndulged(dateStr));
       grid.appendChild(el);
     }
   }
