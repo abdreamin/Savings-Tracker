@@ -356,6 +356,26 @@
     }
     .cal-cell.saved:hover .tooltip { display: block; }
 
+    /* ── Spend breakdown ── */
+    .spend-month-row {
+      display: flex; align-items: center; gap: .6rem;
+      padding: .55rem .6rem; border-radius: 8px; margin-bottom: .35rem;
+      background: #fdf6f8; border: 1px solid var(--cream-dark);
+      cursor: pointer; transition: background .15s;
+    }
+    .spend-month-row:hover { background: #fce4ec; }
+    .spend-month-label { font-weight: 700; font-size: .88rem; flex: 1; }
+    .spend-month-count { font-size: .78rem; color: var(--muted); }
+    .spend-month-amt   { font-weight: 700; color: #c62828; font-size: .92rem; min-width: 4.5rem; text-align: right; }
+    .spend-month-bar-wrap { width: 100%; background: #f0dce3; border-radius: 4px; height: 5px; margin-top: .3rem; }
+    .spend-month-bar { height: 5px; border-radius: 4px; background: #e57373; transition: width .4s; }
+    .spend-total-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .6rem .6rem .2rem; font-size: .82rem; color: var(--muted);
+      border-top: 1px solid var(--cream-dark); margin-top: .3rem;
+    }
+    .spend-total-amt { font-weight: 700; font-size: 1rem; color: #c62828; }
+
     /* ── Log ── */
     .log-list { display: flex; flex-direction: column; gap: .6rem; }
     .log-item {
@@ -678,6 +698,27 @@
       font-size: .88rem;
     }
 
+    /* ── Quick-log FAB ── */
+    #quickLogFab {
+      position: fixed;
+      bottom: 1.4rem;
+      right: 1.2rem;
+      z-index: 900;
+      background: linear-gradient(135deg, #7d4560, #4a2535);
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      padding: .75rem 1.2rem;
+      font-size: 1rem;
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 4px 18px rgba(74,37,53,.38);
+      transition: transform .15s, box-shadow .15s;
+    }
+    #quickLogFab:hover { transform: scale(1.07); box-shadow: 0 6px 22px rgba(74,37,53,.45); }
+    #quickLogFab:active { transform: scale(.97); }
+
     /* ── Milestone celebration modal ── */
     .milestone-backdrop {
       display: none;
@@ -784,6 +825,10 @@
       <div class="stat">
         <div class="amount" id="statNoBought">0</div>
         <div class="label">Days Without Buying</div>
+      </div>
+      <div class="stat stat-spent">
+        <div class="amount" id="statSpent" style="color:#c62828;">$0</div>
+        <div class="label">Est. Spent on Coffee</div>
       </div>
     </div>
 
@@ -923,6 +968,13 @@
       </details>
     </div>
 
+    <!-- Monthly spend breakdown -->
+    <div class="card" id="spendBreakdownCard">
+      <h2>💸 Coffee Spend Tracker</h2>
+      <p style="font-size:.78rem; color:var(--muted); margin-bottom:.9rem;">Estimated at <strong>$6.50/drink</strong> (midpoint of $6–$7). Tap a month to see the days.</p>
+      <div id="spendBreakdownList"></div>
+    </div>
+
     <!-- Monthly calendar -->
     <div class="card">
       <h2>📅 Monthly View</h2>
@@ -945,6 +997,36 @@
   </main>
 </div>
 
+</div>
+
+<!-- ═══════════════════════ QUICK-LOG FAB ═══════════════════════ -->
+<button id="quickLogFab" onclick="openQuickLog()" aria-label="Quick log a coffee" title="Quick log a drink">
+  ☕ +
+</button>
+
+<!-- ═══════════════════════ QUICK-LOG MODAL ═══════════════════════ -->
+<div class="milestone-backdrop" id="quickLogModal" onclick="if(event.target===this)closeQuickLog()">
+  <div class="milestone-modal" style="max-width:340px; padding:1.5rem 1.5rem 1.2rem;">
+    <div style="font-size:1.8rem; margin-bottom:.4rem;">☕</div>
+    <div style="font-weight:800; font-size:1.1rem; margin-bottom:.1rem;">Log a Bought Coffee</div>
+    <div style="font-size:.78rem; color:var(--muted); margin-bottom:1rem;">Quick entry — fill in what you know</div>
+    <div style="display:flex; flex-direction:column; gap:.6rem; text-align:left;">
+      <div>
+        <label style="font-size:.8rem; font-weight:600; display:block; margin-bottom:.25rem;">Coffee</label>
+        <input id="qlName" type="text" placeholder="e.g. Oat Latte" style="width:100%; padding:.5rem .7rem; border:1px solid var(--cream-dark); border-radius:8px; font-size:.9rem; font-family:inherit;" />
+      </div>
+      <div>
+        <label style="font-size:.8rem; font-weight:600; display:block; margin-bottom:.25rem;">Where From?</label>
+        <input id="qlPlace" type="text" placeholder="e.g. Starbucks" style="width:100%; padding:.5rem .7rem; border:1px solid var(--cream-dark); border-radius:8px; font-size:.9rem; font-family:inherit;" />
+      </div>
+      <div>
+        <label style="font-size:.8rem; font-weight:600; display:block; margin-bottom:.25rem;">Date</label>
+        <input id="qlDate" type="date" style="width:100%; padding:.5rem .7rem; border:1px solid var(--cream-dark); border-radius:8px; font-size:.9rem; font-family:inherit;" />
+      </div>
+    </div>
+    <button class="mile-close" style="margin-top:1.1rem; background:linear-gradient(135deg,#7d4560,#4a2535);" onclick="submitQuickLog()">Log It ☕</button>
+    <button onclick="closeQuickLog()" style="margin-top:.4rem; background:none; border:none; color:var(--muted); font-size:.8rem; cursor:pointer; font-family:inherit;">Cancel</button>
+  </div>
 </div>
 
 <!-- ═══════════════════════ MILESTONE MODAL ═══════════════════════ -->
@@ -1012,7 +1094,7 @@
 
 <script>
   // Bump whenever the file changes so you can confirm which build is live.
-  const APP_VERSION = '2026.11.02b';
+  const APP_VERSION = '2026.11.03a';
 
   // ══════════════════════════════════════════════════════
   //  TAB SWITCHING
@@ -1833,7 +1915,82 @@
     return new Date(y, m-1, d).toLocaleDateString('en-US', { weekday:'short', year:'numeric', month:'short', day:'numeric' });
   }
 
-  function render() { renderStats(); renderLog(); renderGoal(); }
+  function render() { renderStats(); renderLog(); renderGoal(); renderSpend(); }
+
+  const AVG_PRICE = 6.50; // midpoint of $6–$7
+
+  function renderSpend() {
+    // Update the stat tile
+    const spentEl = document.getElementById('statSpent');
+    const total = boughtEntries.length * AVG_PRICE;
+    if (spentEl) spentEl.textContent = '$' + total.toFixed(0);
+
+    // Build monthly breakdown
+    const container = document.getElementById('spendBreakdownList');
+    if (!container) return;
+
+    if (!boughtEntries.length) {
+      container.innerHTML = '<div style="color:var(--muted);font-size:.85rem;text-align:center;padding:.75rem 0;">No bought coffees logged yet 🎉</div>';
+      return;
+    }
+
+    // Group by year-month
+    const byMonth = {};
+    boughtEntries.forEach(e => {
+      const key = e.date ? e.date.slice(0, 7) : 'unknown'; // "2026-10"
+      if (!byMonth[key]) byMonth[key] = [];
+      byMonth[key].push(e);
+    });
+
+    const months = Object.keys(byMonth).sort().reverse();
+    const maxCount = Math.max(...months.map(m => byMonth[m].length));
+    const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    let html = '';
+    let grandTotal = 0;
+    months.forEach(key => {
+      const list  = byMonth[key];
+      const count = list.length;
+      const amt   = count * AVG_PRICE;
+      grandTotal += amt;
+      const pct = Math.round((count / maxCount) * 100);
+      const [yr, mo] = key.split('-');
+      const label = MONTH_NAMES[parseInt(mo) - 1] + ' ' + yr;
+      const places = [...new Set(list.map(e => e.place).filter(Boolean))].slice(0, 3).join(', ');
+      const sub = places || (count + ' drink' + (count !== 1 ? 's' : ''));
+      html += `
+        <div class="spend-month-row" onclick="jumpToMonth(${parseInt(yr)}, ${parseInt(mo)-1})">
+          <div style="flex:1; min-width:0;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span class="spend-month-label">${label}</span>
+              <span class="spend-month-amt">~$${amt.toFixed(0)}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:.15rem;">
+              <span class="spend-month-count">${count} coffee${count !== 1 ? 's' : ''}${places ? ' · ' + places : ''}</span>
+            </div>
+            <div class="spend-month-bar-wrap">
+              <div class="spend-month-bar" style="width:${pct}%"></div>
+            </div>
+          </div>
+        </div>`;
+    });
+
+    html += `<div class="spend-total-row">
+      <span>Total estimated spend</span>
+      <span class="spend-total-amt">~$${grandTotal.toFixed(0)}</span>
+    </div>`;
+
+    container.innerHTML = html;
+  }
+
+  function jumpToMonth(year, month) {
+    calYear  = year;
+    calMonth = month;
+    renderCalendar();
+    // Scroll to calendar
+    const calCard = document.getElementById('calTitle');
+    if (calCard) calCard.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   // ══════════════════════════════════════════════════════
   //  SAVINGS GOAL
@@ -1942,6 +2099,43 @@
   function closeMilestone() {
     document.getElementById('milestoneModal').classList.remove('show');
     document.body.style.overflow = '';
+  }
+
+  // ── Quick-log ──────────────────────────────────────────────────
+  function openQuickLog() {
+    // Pre-fill today's date
+    const t = new Date();
+    const ds = `${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
+    document.getElementById('qlDate').value = ds;
+    document.getElementById('qlName').value  = '';
+    document.getElementById('qlPlace').value = '';
+    document.getElementById('quickLogModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => document.getElementById('qlName').focus(), 100);
+  }
+
+  function closeQuickLog() {
+    document.getElementById('quickLogModal').classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  function submitQuickLog() {
+    const name  = document.getElementById('qlName').value.trim()  || 'Coffee';
+    const place = document.getElementById('qlPlace').value.trim() || '';
+    const date  = document.getElementById('qlDate').value;
+    if (!date) { alert('Please pick a date.'); return; }
+    const entry = { id: Date.now(), date, name, place };
+    boughtEntries.push(entry);
+    saveBought();
+    closeQuickLog();
+    render();
+    renderCalendar();
+    // Quick flash to confirm
+    const fab = document.getElementById('quickLogFab');
+    const orig = fab.textContent;
+    fab.textContent = '✓ Logged!';
+    fab.style.background = 'linear-gradient(135deg,#4caf50,#2e7d32)';
+    setTimeout(() => { fab.textContent = orig; fab.style.background = ''; }, 1800);
   }
 
   function launchConfetti() {
