@@ -830,6 +830,10 @@
         <div class="amount" id="statSpent" style="color:#c62828;">$0</div>
         <div class="label">Est. Spent on Coffee</div>
       </div>
+      <div class="stat">
+        <div class="amount" id="statNet">$0</div>
+        <div class="label">Net Position</div>
+      </div>
     </div>
 
     <!-- No-buy streak badge -->
@@ -1094,7 +1098,7 @@
 
 <script>
   // Bump whenever the file changes so you can confirm which build is live.
-  const APP_VERSION = '2026.11.03a';
+  const APP_VERSION = '2026.11.03b';
 
   // ══════════════════════════════════════════════════════
   //  TAB SWITCHING
@@ -1383,6 +1387,8 @@
         driveSync.accessToken = resp.access_token;
         driveSync.tokenExpiry = Date.now() + (resp.expires_in * 1000) - 60000;
         saveDriveToken();
+        // Store hint (email) for silent re-auth next time
+        if (hint) localStorage.setItem('tracker_drive_hint', hint);
         if (!driveSync.initialSyncDone) {
           await initialDriveSync();
           driveSync.initialSyncDone = true;
@@ -1920,10 +1926,17 @@
   const AVG_PRICE = 6.50; // midpoint of $6–$7
 
   function renderSpend() {
-    // Update the stat tile
+    // Update stat tiles
     const spentEl = document.getElementById('statSpent');
-    const total = boughtEntries.length * AVG_PRICE;
-    if (spentEl) spentEl.textContent = '$' + total.toFixed(0);
+    const netEl   = document.getElementById('statNet');
+    const spent   = boughtEntries.length * AVG_PRICE;
+    const saved   = entries.reduce((s, e) => s + e.price, 0);
+    const net     = saved - spent;
+    if (spentEl) spentEl.textContent = '$' + spent.toFixed(0);
+    if (netEl) {
+      netEl.textContent = (net >= 0 ? '+$' : '-$') + Math.abs(net).toFixed(0);
+      netEl.style.color = net >= 0 ? 'var(--green)' : '#c62828';
+    }
 
     // Build monthly breakdown
     const container = document.getElementById('spendBreakdownList');
@@ -1975,9 +1988,20 @@
         </div>`;
     });
 
+    const netAmt = saved - grandTotal;
+    const netColor = netAmt >= 0 ? '#2e7d32' : '#c62828';
+    const netSign  = netAmt >= 0 ? '+' : '-';
     html += `<div class="spend-total-row">
       <span>Total estimated spend</span>
       <span class="spend-total-amt">~$${grandTotal.toFixed(0)}</span>
+    </div>
+    <div class="spend-total-row" style="border-top:none; padding-top:0; margin-top:-.3rem;">
+      <span>Saved on skipped coffees</span>
+      <span style="font-weight:700; font-size:1rem; color:var(--green);">+$${saved.toFixed(0)}</span>
+    </div>
+    <div style="margin:.5rem .6rem .2rem; padding:.6rem .75rem; border-radius:8px; background:${netAmt >= 0 ? '#e8f5e9' : '#fce4ec'}; display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-weight:700; font-size:.88rem; color:${netColor};">Net position</span>
+      <span style="font-weight:800; font-size:1.1rem; color:${netColor};">${netSign}$${Math.abs(netAmt).toFixed(0)}</span>
     </div>`;
 
     container.innerHTML = html;
@@ -2173,15 +2197,62 @@
     if (el) el.value = savedClientId;
   }
 
+  // ── Silent auto-reconnect ─────────────────────────────────────────
+  // Google's token client with prompt:'' silently refreshes the token
+  // when the user has already granted consent — no popup, no tap needed.
+
+  function waitForGIS(cb, attempts) {
+    if (window.google && window.google.accounts) { cb(); return; }
+    if ((attempts || 0) > 40) return; // give up after ~8 s
+    setTimeout(() => waitForGIS(cb, (attempts || 0) + 1), 200);
+  }
+
+  function tryAutoConnect() {
+    if (!driveSync.clientId) return;
+    if (driveSync.accessToken && Date.now() < driveSync.tokenExpiry) return; // still valid
+    if (!window.google || !window.google.accounts) return;
+
+    const hint = localStorage.getItem('tracker_drive_hint') || '';
+    if (!driveSync.tokenClient) initTokenClient(hint);
+
+    const orig = driveSync.tokenClient.callback;
+    driveSync.tokenClient.callback = async (resp) => {
+      driveSync.tokenClient.callback = orig;
+      if (resp.error) return; // silent fail — user can tap Connect Google manually
+      driveSync.accessToken = resp.access_token;
+      driveSync.tokenExpiry = Date.now() + (resp.expires_in * 1000) - 60000;
+      saveDriveToken();
+      if (!driveSync.initialSyncDone) {
+        await initialDriveSync();
+        driveSync.initialSyncDone = true;
+      } else {
+        setDriveStatus('connected', 'Reconnected');
+        if (driveSync.dirty) scheduleDriveSync();
+      }
+    };
+    try {
+      driveSync.tokenClient.requestAccessToken({ prompt: '' });
+    } catch (e) { /* silent */ }
+  }
+
+  // Proactive refresh — re-auth 5 min before expiry so syncs never fail mid-session
+  setInterval(() => {
+    if (!driveSync.clientId || !driveSync.accessToken) return;
+    if (driveSync.tokenExpiry - Date.now() < 5 * 60 * 1000) tryAutoConnect();
+  }, 2 * 60 * 1000); // check every 2 min
+
   // Boot Drive sync
   loadDriveConfig();
   if (driveSync.clientId) {
-    setDriveStatus(driveSync.accessToken ? 'connected' : 'off',
-      driveSync.lastSyncedAt ? 'Last sync: ' + new Date(driveSync.lastSyncedAt).toLocaleString() : '');
-    // Silently try to re-auth with cached token and sync if dirty
     if (driveSync.accessToken) {
+      setDriveStatus('connected',
+        driveSync.lastSyncedAt ? 'Last sync: ' + new Date(driveSync.lastSyncedAt).toLocaleString() : '');
       driveSync.initialSyncDone = true;
       if (driveSync.dirty) scheduleDriveSync();
+    } else {
+      // Token expired — try silent re-auth as soon as GIS library loads
+      setDriveStatus('off', 'Reconnecting…');
+      waitForGIS(tryAutoConnect);
     }
   } else {
     setDriveStatus('off');
